@@ -34,6 +34,10 @@
 #ifndef LWESP_HDR_DEFAULT_CONFIG_H
 #define LWESP_HDR_DEFAULT_CONFIG_H
 
+
+// TODO: We sould better handle this in cmake
+#define LWESP_CFG_NETCONN 1
+
 /* Uncomment to ignore user options (or set macro in compiler flags) */
 /* #define LWESP_IGNORE_USER_OPTS */
 
