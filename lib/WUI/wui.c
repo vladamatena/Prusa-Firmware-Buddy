@@ -20,6 +20,10 @@
 #include "stm32_port.h"
 
 #include "esp.h"
+
+#include "sockets.h" // LwIP sockets wrapper
+#include "lwesp_sockets.h"
+
 osThreadId httpcTaskHandle;
 
 #define WUI_NETIF_SETUP_DELAY  1000
@@ -77,7 +81,105 @@ static void update_eth_changes(void) {
     wui_lwip_sync_gui_lan_settings();
 }
 
+<<<<<<< HEAD
 extern void netconn_client_thread(void const *arg);
+=======
+void socket_listen_test_lwip() {
+    // SOCKET LISTENING TEST
+    int listenfd = lwip_socket(AF_INET, SOCK_STREAM, 0);
+    if (listenfd == -1) {
+        printf("FAILED TO CREATE LISTENING SOCKET\n");
+        return;
+    }
+    printf("SOCKET CREATED\n");
+
+    struct sockaddr_in servaddr, clientaddr;
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_port = htons(5000);
+  
+    if ((lwip_bind(listenfd, (const struct sockaddr *)&servaddr, sizeof(servaddr))) != 0) {
+        printf("BIND FAILED\n");
+        return;
+    }
+    
+    printf("SOCKET BOUND\n");
+  
+    if ((lwip_listen(listenfd, 5)) != 0) {
+        printf("LISTEN FAILED\n");
+        return;
+    }
+    
+    printf("SOCKET LISTENING\n");
+    
+    socklen_t len = sizeof(clientaddr);
+  
+    int connectionfd = lwip_accept(listenfd, (struct sockaddr *)&clientaddr, &len);
+    if (connectionfd < 0) {
+        printf("ACCEPT FAILED\n");
+        return;
+    }
+    
+    printf("CONNECTION ACCEPTED\n");
+
+    const char buff[] = "Hello\n";
+    lwip_write(connectionfd, buff, sizeof(buff));
+  
+    lwip_close(connectionfd);
+  
+    // After chatting close the socket
+    lwip_close(listenfd);
+}
+
+void socket_listen_test_lwesp() {
+    // SOCKET LISTENING TEST
+    int listenfd = lwesp_socket(AF_INET, SOCK_STREAM, 0);
+    if (listenfd == -1) {
+        printf("FAILED TO CREATE LISTENING SOCKET\n");
+        return;
+    }
+    printf("SOCKET CREATED\n");
+
+    struct sockaddr_in servaddr, clientaddr;
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_port = htons(5000);
+  
+    if ((lwesp_bind(listenfd, (const struct sockaddr *)&servaddr, sizeof(servaddr))) != 0) {
+        printf("BIND FAILED\n");
+        return;
+    }
+    
+    printf("SOCKET BOUND\n");
+  
+    if ((lwesp_listen(listenfd, 5)) != 0) {
+        printf("LISTEN FAILED\n");
+        return;
+    }
+    
+    printf("SOCKET LISTENING\n");
+    
+    socklen_t len = sizeof(clientaddr);
+  
+    int connectionfd = lwesp_accept(listenfd, (struct sockaddr *)&clientaddr, &len);
+    if (connectionfd < 0) {
+        printf("ACCEPT FAILED\n");
+        return;
+    }
+    
+    printf("CONNECTION ACCEPTED\n");
+
+    const char buff[] = "Hello\n";
+    lwesp_write(connectionfd, buff, sizeof(buff));
+  
+    lwesp_close(connectionfd);
+  
+    // After chatting close the socket
+    lwesp_close(listenfd);
+}
+>>>>>>> 99d18e36 (WIP: LwESP sockets)
 
 void StartWebServerTask(void const *argument) {
     ap_entry_t ap = { "SSID", "password" };
@@ -114,10 +216,23 @@ void StartWebServerTask(void const *argument) {
         esp_sys_thread_create(NULL, "netconn_client", (esp_sys_thread_fn)netconn_client_thread, NULL, 512, ESP_SYS_THREAD_PRIO);
     }
 
+    // STA CONNECTED TEST
     for (;;) {
         update_eth_changes();
         sync_with_marlin_server();
 
+        lwesp_get_wifi_mode(&mode, NULL, NULL, 0);
+        if (mode == LWESP_MODE_STA) {
+            printf("test ok");
+        }
+        lwesp_get_wifi_mode(&mode, NULL, NULL, 0);
+        if (mode == LWESP_MODE_STA) {
+            printf("sta mode test ok");
+			break;
+        }
         osDelay(1000);
     }
+    
+    socket_listen_test_lwip();
 }
+

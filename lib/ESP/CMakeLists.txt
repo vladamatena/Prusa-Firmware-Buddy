@@ -40,6 +40,8 @@ target_sources(
             # prusa/src/lwesp_sta.c
             prusa/snippets/client.c
             lwesp/src/api/esp_netconn.c
+            lwesp/lwesp/src/api/lwesp_netconn.c
+            prusa/lwesp_sockets.c
   )
 
 target_include_directories(
