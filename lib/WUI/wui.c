@@ -85,7 +85,7 @@ static void update_eth_changes(void) {
 extern void netconn_client_thread(void const *arg);
 =======
 void socket_listen_test_lwip() {
-    // SOCKET LISTENING TEST
+    printf("LWIP TCP HELLO SERVER TEST\n");
     int listenfd = lwip_socket(AF_INET, SOCK_STREAM, 0);
     if (listenfd == -1) {
         printf("FAILED TO CREATE LISTENING SOCKET\n");
@@ -130,10 +130,12 @@ void socket_listen_test_lwip() {
   
     // After chatting close the socket
     lwip_close(listenfd);
+
+    printf("CONNECTION CLOSED\n");
 }
 
 void socket_listen_test_lwesp() {
-    // SOCKET LISTENING TEST
+    printf("LWESP TCP HELLO SERVER TEST\n");
     int listenfd = lwesp_socket(AF_INET, SOCK_STREAM, 0);
     if (listenfd == -1) {
         printf("FAILED TO CREATE LISTENING SOCKET\n");
@@ -178,6 +180,8 @@ void socket_listen_test_lwesp() {
   
     // After chatting close the socket
     lwesp_close(listenfd);
+
+    printf("CONNECTION CLOSED\n");
 }
 >>>>>>> 99d18e36 (WIP: LwESP sockets)
 
@@ -233,6 +237,6 @@ void StartWebServerTask(void const *argument) {
         osDelay(1000);
     }
     
-    socket_listen_test_lwip();
+    socket_listen_test_lwesp();
 }
 
