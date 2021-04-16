@@ -53,13 +53,15 @@
 #include "lwip/raw.h"
 #include "lwip/udp.h"
 #include "lwip/memp.h"
-#include "lwip/pbuf.h"
+// #include "lwip/pbuf.h"
 #include "lwip/netif.h"
 #include "lwip/priv/tcpip_priv.h"
 #include "lwip/mld6.h"
 #if LWIP_CHECKSUM_ON_COPY
 #include "lwip/inet_chksum.h"
 #endif
+
+#include "lwesp_netbuf.h"
 
 #if LWIP_COMPAT_SOCKETS == 2 && LWIP_POSIX_SOCKETS_IO_NAMES
 #include <stdarg.h>
@@ -238,6 +240,55 @@ static int  lwip_socket_register_membership(int s, const ip4_addr_t *if_addr, co
 static void lwip_socket_unregister_membership(int s, const ip4_addr_t *if_addr, const ip4_addr_t *multi_addr);
 static void lwip_socket_drop_registered_memberships(int s);
 #endif /* LWIP_IGMP */
+
+
+
+
+
+
+// TODO: This is slow and insecure implementaiton of netconn to socket mapping
+#define NETCONN_SOCKET_MAPPING_MAX 10
+
+struct netconn_socket_record {
+	lwesp_netconn_t *conn;
+	int socket;
+};
+
+struct netconn_socket_record netconn_socket_mapping[NETCONN_SOCKET_MAPPING_MAX];
+
+static int get_netconn_socket(lwesp_netconn_t *conn) {
+	for(uint i = 0; i < NETCONN_SOCKET_MAPPING_MAX; i++) {
+		if(netconn_socket_mapping[i].conn == conn) {
+			return netconn_socket_mapping[i].socket;
+		}
+	}
+	return -1;
+}
+
+static void set_netconn_socket_mapping(lwesp_netconn_t *conn, int socket) {
+	for(uint i = 0; i < NETCONN_SOCKET_MAPPING_MAX; i++) {
+		if(netconn_socket_mapping[i].conn == NULL) {
+			netconn_socket_mapping[i].conn = conn;
+			netconn_socket_mapping[i].socket = socket;
+			break;
+		}
+	}
+}
+
+static void drop_netconn_socket_mapping(lwesp_netconn_t *conn) {
+	for(uint i = 0; i < NETCONN_SOCKET_MAPPING_MAX; i++) {
+		if(netconn_socket_mapping[i].conn == conn) {
+			netconn_socket_mapping[i].conn = NULL;
+			netconn_socket_mapping[i].socket = -1;
+		}
+	}
+}
+
+
+
+
+
+
 
 #if LWIP_IPV6_MLD
 /* This is to keep track of IP_JOIN_GROUP calls to drop the membership when
@@ -581,8 +632,7 @@ free_socket_free_elements(int is_tcp, struct lwesp_netconn *conn, union lwesp_so
     if (is_tcp) {
       lwesp_pbuf_free(lastdata->pbuf);
     } else {
-//       netbuf_free(lastdata->netbuf);
-// 		TODO: Implement netbuff free, netbuffs not supported?
+      lwesp_netbuf_free(lastdata->netbuf);
     }
   }
   if (conn != NULL) {
@@ -673,22 +723,25 @@ lwesp_accept(int s, struct sockaddr *addr, socklen_t *addrlen)
    * so nsock->rcvevent is >= 1 here!
    */
   SYS_ARCH_PROTECT(lev);
-// TODO: lwesp netconn does not allow to store socket. Needs external map
+
+// lwesp netconn does not allow to store socket. Needs external map
 //   recvevent = (s16_t)(-1 - newconn->socket);
 //   newconn->socket = newsock;
+// TODO: is this ok
+  recvevent = (s16_t)(-1 - get_netconn_socket(newconn));
+  set_netconn_socket_mapping(newconn, newsock);
+
   SYS_ARCH_UNPROTECT(lev);
 
-  // TODO: lwesp netconn does not allow to store socket. Needs external map
-/*
-  if (newconn->callback) {
+  // TODO: lwesp netconn does not allow to store callback. Needs external map
+/*  if (newconn->callback) {
     LOCK_TCPIP_CORE();
     while (recvevent > 0) {
       recvevent--;
       newconn->callback(newconn, NETCONN_EVT_RCVPLUS, 0);
     }
     UNLOCK_TCPIP_CORE();
-  }
-  */
+  }  */
 
   /* Note that POSIX only requires us to check addr is non-NULL. addrlen must
    * not be NULL if addr is valid.
@@ -698,7 +751,18 @@ lwesp_accept(int s, struct sockaddr *addr, socklen_t *addrlen)
     /* get the IP address and port of the remote host */
 	
 // 	TODO: implement using lwesp_conn_get_remote_port, lwesp_conn_get_local_port, lwesp_conn_get_remote_ip
-//     err = lwesp_netconn_peer(newconn, &naddr, &port);
+//     err = netconn_peer(newconn, &naddr, &port);
+    lwesp_ip_t espaddr;
+	lwesp_conn_get_remote_ip(lwesp_netconn_get_conn(newconn), &espaddr);
+	IP4_ADDR(&naddr, espaddr.ip[0], espaddr.ip[1], espaddr.ip[2], espaddr.ip[3]);
+    port = lwesp_conn_get_remote_port(lwesp_netconn_get_conn(newconn));
+    
+//     lwesp_conn_get_remote_ip(lwesp_netconn_get_conn(sock->conn), &espip);	
+//     IP4_ADDR(&tmpaddr, espip.ip[0], espip.ip[1], espip.ip[2], espip.ip[3]);
+    
+    
+    
+    
     
     if (err != ERR_OK) {
       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_accept(%d): netconn_peer failed, err=%d\n", s, err));
@@ -1125,25 +1189,24 @@ lwip_recv_tcp_from(struct lwesp_sock *sock, struct sockaddr *from, socklen_t *fr
 /* Helper function to receive a netbuf from a udp or raw netconn.
  * Keeps sock->lastdata for peeking.
  */
-static err_t
-lwip_recvfrom_udp_raw(struct lwesp_sock *sock, int flags, struct msghdr *msg, u16_t *datagram_len, int dbg_s)
-{
-  struct netbuf *buf;
-  u8_t apiflags;
-  err_t err;
-  u16_t buflen, copylen, copied;
-  int i;
-
-  LWIP_UNUSED_ARG(dbg_s);
-  LWIP_ERROR("lwip_recvfrom_udp_raw: invalid arguments", (msg->msg_iov != NULL) || (msg->msg_iovlen <= 0), return ERR_ARG;);
-
-  if (flags & MSG_DONTWAIT) {
-    apiflags = NETCONN_DONTBLOCK;
-  } else {
-    apiflags = 0;
-  }
-
-  // TODO: lwesp does not have netbufs, this has to be fixed
+// static err_t
+// lwip_recvfrom_udp_raw(struct lwesp_sock *sock, int flags, struct msghdr *msg, u16_t *datagram_len, int dbg_s)
+// {
+//   struct netbuf *buf;
+//   u8_t apiflags;
+//   err_t err;
+//   u16_t buflen, copylen, copied;
+//   int i;
+// 
+//   LWIP_UNUSED_ARG(dbg_s);
+//   LWIP_ERROR("lwip_recvfrom_udp_raw: invalid arguments", (msg->msg_iov != NULL) || (msg->msg_iovlen <= 0), return ERR_ARG;);
+// 
+//   if (flags & MSG_DONTWAIT) {
+//     apiflags = NETCONN_DONTBLOCK;
+//   } else {
+//     apiflags = 0;
+//   }
+// 
 //   LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_recvfrom_udp_raw[UDP/RAW]: top sock->lastdata=%p\n", (void *)sock->lastdata.netbuf));
 //   /* Check if there is data left from the last recv operation. */
 //   buf = sock->lastdata.netbuf;
@@ -1234,8 +1297,8 @@ lwip_recvfrom_udp_raw(struct lwesp_sock *sock, int flags, struct msghdr *msg, u1
 //   if (datagram_len) {
 //     *datagram_len = buflen;
 //   }
-  return ERR_OK;
-}
+//   return ERR_OK;
+// }
 
 ssize_t
 lwesp_recvfrom(int s, void *mem, size_t len, int flags,
@@ -1775,6 +1838,7 @@ lwesp_socket(int domain, int type, int protocol)
 
 //       conn = lwesp_netconn_new_with_callback(DOMAIN_TO_NETCONN_TYPE(domain, NETCONN_TCP), DEFAULT_SOCKET_EVENTCB);
 //       TODO: Not available in lwesp, needs to be reimplemented
+      conn = lwesp_netconn_new(LWESP_NETCONN_TYPE_TCP);
 
 
       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_socket(%s, SOCK_STREAM, %d) = ",

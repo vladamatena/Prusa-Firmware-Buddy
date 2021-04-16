@@ -43,6 +43,7 @@ target_sources(
             lwesp/lwesp/src/api/lwesp_netconn.c
             prusa/lwesp_sockets.c
             lwesp/lwesp/src/api/lwesp_netconn.c
+            prusa/lwesp_netbuf.c
   )
 
 target_include_directories(
