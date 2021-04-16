@@ -59,7 +59,7 @@ extern "C" {
 #endif
 
 union lwesp_sock_lastdata {
-//   struct lwesp_netbuf *netbuf;
+  struct lwesp_netbuf *netbuf;
   struct lwesp_pbuf *pbuf;
 };
 
@@ -67,7 +67,7 @@ union lwesp_sock_lastdata {
 
 
 
-
+// TODO: Dupliacete definition, lwesp does not publicky share complete definition of the lwesp_netconn type
 typedef struct lwesp_netconn {
     struct lwesp_netconn *next; /*!< Linked list entry */
 
