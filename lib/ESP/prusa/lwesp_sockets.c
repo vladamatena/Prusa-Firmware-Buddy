@@ -37,6 +37,8 @@
  *
  */
 
+#include "dbg.h"
+
 #include "lwip/opt.h"
 
 #if LWIP_SOCKET /* don't build if not configured for use in lwipopts.h */
@@ -967,6 +969,7 @@ lwesp_listen(int s, int backlog)
 
   sock = get_socket(s);
   if (!sock) {
+    _dbg("NOT SOCK");
     return -1;
   }
 
@@ -975,7 +978,8 @@ lwesp_listen(int s, int backlog)
 
 //   err = lwesp_netconn_listen_with_backlog(sock->conn, (u8_t)backlog);
 //   TODO: Check this is at last partially valid
-  err = lwesp_netconn_listen(sock->conn);
+  err = lwesp_netconn_listen_with_max_conn(sock->conn, (u8_t)backlog);
+//   err = lwesp_netconn_listen(sock->conn);
 
   if (err != ERR_OK) {
     LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_listen(%d) failed, err=%d\n", s, err));
