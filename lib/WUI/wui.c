@@ -81,13 +81,13 @@ static void update_eth_changes(void) {
 }
 
 void socket_listen_test_lwip() {
-    printf("LWIP TCP HELLO SERVER TEST\n");
+    _dbg("LWIP TCP HELLO SERVER TEST\n");
     int listenfd = lwip_socket(AF_INET, SOCK_STREAM, 0);
     if (listenfd == -1) {
-        printf("FAILED TO CREATE LISTENING SOCKET\n");
+        _dbg("FAILED TO CREATE LISTENING SOCKET\n");
         return;
     }
-    printf("SOCKET CREATED\n");
+    _dbg("SOCKET CREATED\n");
 
     struct sockaddr_in servaddr, clientaddr;
     bzero(&servaddr, sizeof(servaddr));
@@ -96,18 +96,18 @@ void socket_listen_test_lwip() {
     servaddr.sin_port = htons(5000);
   
     if ((lwip_bind(listenfd, (const struct sockaddr *)&servaddr, sizeof(servaddr))) != 0) {
-        printf("BIND FAILED\n");
+        _dbg("BIND FAILED\n");
         return;
     }
     
-    printf("SOCKET BOUND\n");
+    _dbg("SOCKET BOUND\n");
   
     if ((lwip_listen(listenfd, 5)) != 0) {
         printf("LISTEN FAILED\n");
         return;
     }
     
-    printf("SOCKET LISTENING\n");
+    _dbg("SOCKET LISTENING\n");
     
     socklen_t len = sizeof(clientaddr);
   
@@ -117,7 +117,7 @@ void socket_listen_test_lwip() {
         return;
     }
     
-    printf("CONNECTION ACCEPTED\n");
+    _dbg("CONNECTION ACCEPTED\n");
 
     const char buff[] = "Hello\n";
     lwip_write(connectionfd, buff, sizeof(buff));
@@ -127,7 +127,7 @@ void socket_listen_test_lwip() {
     // After chatting close the socket
     lwip_close(listenfd);
 
-    printf("CONNECTION CLOSED\n");
+    _dbg("CONNECTION CLOSED\n");
 }
 
 void socket_listen_test_lwesp() {
@@ -180,7 +180,75 @@ void socket_listen_test_lwesp() {
     _dbg("CONNECTION CLOSED\n");
 }
 
+void netconn_listen_test() {
+    lwespr_t res;
+    lwesp_netconn_p server, client;
+    lwesp_pbuf_p p;
+
+    /* Create netconn for server */
+    server = lwesp_netconn_new(LWESP_NETCONN_TYPE_TCP);
+    if (server == NULL) {
+        _dbg("Cannot create server netconn!\r\n");
+    }
+
+    /* Bind it to port 5000 */
+    res = lwesp_netconn_bind(server, 5000);
+    if (res != lwespOK) {
+        _dbg("Cannot bind server\r\n");
+        goto out;
+    }
+
+    /* Start listening for incoming connections with maximal 1 client */
+    res = lwesp_netconn_listen_with_max_conn(server, 1);
+    if (res != lwespOK) {
+        _dbg("Cannot listen server\r\n");
+        goto out;
+    }
+
+    /* Unlimited loop */
+    while (1) {
+        /* Accept new client */
+        res = lwesp_netconn_accept(server, &client);
+        if (res != lwespOK) {
+            break;
+        }
+        _dbg("New client accepted!\r\n");
+        while (1) {
+            /* Receive data */
+            res = lwesp_netconn_receive(client, &p);
+            if (res == lwespOK) {
+                _dbg("Data received!\r\n");
+                lwesp_pbuf_free(p);
+            } else {
+                _dbg("Netconn receive returned: %d\r\n", (int)res);
+                if (res == lwespCLOSED) {
+                    _dbg("Connection closed by client\r\n");
+                    break;
+                }
+            }
+        }
+        /* Delete client */
+        if (client != NULL) {
+            lwesp_netconn_delete(client);
+            client = NULL;
+        }
+    }
+    /* Delete client */
+    if (client != NULL) {
+        lwesp_netconn_delete(client);
+        client = NULL;
+    }
+
+out:
+    printf("Terminating netconn thread!\r\n");
+    if (server != NULL) {
+        lwesp_netconn_delete(server);
+    }
+    lwesp_sys_thread_terminate(NULL);
+}
+
 void StartWebServerTask(void const *argument) {
+    _dbg("wui task entry\r\n");
     // get settings from ini file
     osDelay(1000);
     _dbg("wui starts\r\n");
@@ -212,24 +280,22 @@ void StartWebServerTask(void const *argument) {
 
     lwesp_mode_t mode = LWESP_MODE_STA_AP;
 
-    // STA CONNECTED TEST
+    // AP MODE TEST
+    lwesp_set_wifi_mode(LWESP_MODE_AP, NULL, NULL, 0);
     for (;;) {
         update_eth_changes();
         sync_with_marlin_server();
         lwesp_get_wifi_mode(&mode, NULL, NULL, 0);
-        if (mode == LWESP_MODE_STA) {
-            printf("test ok");
-        }
-        lwesp_get_wifi_mode(&mode, NULL, NULL, 0);
-        if (mode == LWESP_MODE_STA) {
+        if (mode == LWESP_MODE_AP) {
             _dbg("sta mode test ok");
 			break;
         } else {
-            _dbg("sta mode test FAIL, mode: %d", mode);
+            _dbg("ap mode test FAIL, mode: %d", mode);
         }
         osDelay(1000);
-        lwesp_set_wifi_mode(LWESP_MODE_STA, NULL, NULL, 0);
     }
+
+    netconn_listen_test();
     
     socket_listen_test_lwesp();
 }
