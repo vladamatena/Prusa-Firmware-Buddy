@@ -248,6 +248,102 @@ out:
     lwesp_sys_thread_terminate(NULL);
 }
 
+#define NETCONN_HOST        "10.42.0.1"
+#define NETCONN_PORT        5000
+
+static const char
+request_header[] = ""
+                   "GET / HTTP/1.1\r\n"
+                   "Host: " NETCONN_HOST "\r\n"
+                   "Connection: close\r\n"
+                   "\r\n";
+
+
+void netconn_client_test() {
+    lwespr_t res;
+    lwesp_pbuf_p pbuf;
+    lwesp_netconn_p client;
+
+    /*
+     * First create a new instance of netconn
+     * connection and initialize system message boxes
+     * to accept received packet buffers
+     */
+    client = lwesp_netconn_new(LWESP_NETCONN_TYPE_TCP);
+    if (client != NULL) {
+        /*
+         * Connect to external server as client
+         * with custom NETCONN_CONN_HOST and CONN_PORT values
+         *
+         * Function will block thread until we are successfully connected (or not) to server
+         */
+        res = lwesp_netconn_connect(client, NETCONN_HOST, NETCONN_PORT);
+        if (res == lwespOK) {                     /* Are we successfully connected? */
+            _dbg("Connected to " NETCONN_HOST "\r\n");
+            res = lwesp_netconn_write(client, request_header, sizeof(request_header) - 1);    /* Send data to server */
+            if (res == lwespOK) {
+                res = lwesp_netconn_flush(client);    /* Flush data to output */
+            }
+            if (res == lwespOK) {                 /* Were data sent? */
+                _dbg("Data were successfully sent to server\r\n");
+
+                /*
+                 * Since we sent HTTP request,
+                 * we are expecting some data from server
+                 * or at least forced connection close from remote side
+                 */
+                do {
+                    /*
+                     * Receive single packet of data
+                     *
+                     * Function will block thread until new packet
+                     * is ready to be read from remote side
+                     *
+                     * After function returns, don't forgot the check value.
+                     * Returned status will give you info in case connection
+                     * was closed too early from remote side
+                     */
+                    res = lwesp_netconn_receive(client, &pbuf);
+                    if (res == lwespCLOSED) {     /* Was the connection closed? This can be checked by return status of receive function */
+                        _dbg("Connection closed by remote side...\r\n");
+                        break;
+                    } else if (res == lwespTIMEOUT) {
+                        _dbg("Netconn timeout while receiving data. You may try multiple readings before deciding to close manually\r\n");
+                    }
+
+                    if (res == lwespOK && pbuf != NULL) { /* Make sure we have valid packet buffer */
+                        /*
+                         * At this point read and manipulate
+                         * with received buffer and check if you expect more data
+                         *
+                         * After you are done using it, it is important
+                         * you free the memory otherwise memory leaks will appear
+                         */
+                        _dbg("Received new data packet of %d bytes\r\n", (int)lwesp_pbuf_length(pbuf, 1));
+                        lwesp_pbuf_free(pbuf);    /* Free the memory after usage */
+                        pbuf = NULL;
+                    }
+                } while (1);
+            } else {
+                _dbg("Error writing data to remote host!\r\n");
+            }
+
+            /*
+             * Check if connection was closed by remote server
+             * and in case it wasn't, close it manually
+             */
+            if (res != lwespCLOSED) {
+                lwesp_netconn_close(client);
+            }
+        } else {
+            _dbg("Cannot connect to remote host %s:%d!, res: %d\r\n", NETCONN_HOST, NETCONN_PORT, res);
+        }
+        lwesp_netconn_delete(client);             /* Delete netconn structure */
+    }
+
+    lwesp_sys_thread_terminate(NULL);             /* Terminate current thread */
+}
+
 void StartWebServerTask(void const *argument) {
     ap_entry_t ap = { "SSID", "password" };
     uint32_t res;
@@ -300,6 +396,30 @@ void StartWebServerTask(void const *argument) {
         }
         osDelay(1000);
     }
+
+    // sta connect to ap
+    lwespr_t err = lwesp_sta_join("esptest", "lwesp8266", NULL, NULL, NULL, 1);
+    if(err == lwespOK) {
+        _dbg("sta join ok\n");
+
+        lwesp_ip_t ip;
+        uint8_t is_dhcp;
+
+        printf("Connected to network!\r\n");
+
+        lwesp_sta_copy_ip(&ip, NULL, NULL, &is_dhcp);
+        _dbg("STATION IP: %d.%d.%d.%d", ip.ip[0], ip.ip[1], ip.ip[2], ip.ip[3]);
+        printf("; Is DHCP: %d\r\n", (int)is_dhcp);
+    } else {
+        _dbg("AP join FAILED, res: %d", err);
+    }
+
+    /*lwesp_ip_t ip, gw, nm;
+    lwesp_ap_getip(&ip, &gw, &nm, NULL, NULL, 1);
+    _dbg("AP IP: %d.%d.%d.%d", ip.ip[0], ip.ip[1], ip.ip[2], ip.ip[3]);*/
+
+
+    netconn_client_test();
 
     netconn_listen_test();
     
