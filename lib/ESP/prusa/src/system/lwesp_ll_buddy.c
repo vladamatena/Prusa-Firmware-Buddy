@@ -141,6 +141,8 @@ void configure_uart(uint32_t baudrate) {
     }
 }
 
+static int xxx_uart_initialized = 0;
+
 /**
  * \brief           Callback function called from initialization process
  */
@@ -161,8 +163,11 @@ lwesp_ll_init(lwesp_ll_t *ll) {
         ll->reset_fn = reset_device;     /* Set callback for hardware reset */
     }
 
-    configure_uart(ll->uart.baudrate); /* Initialize UART for communication */
-    esp_set_operating_mode(ESP_RUNNING_MODE);
+    if (!xxx_uart_initialized) {
+        configure_uart(ll->uart.baudrate); /* Initialize UART for communication */
+        esp_set_operating_mode(ESP_RUNNING_MODE);
+        xxx_uart_initialized = 1;
+    }
     initialized = 1;
     return lwespOK;
 }
