@@ -160,7 +160,7 @@ lwesp_ll_init(lwesp_ll_t *ll) {
 #endif /* !LWESP_CFG_MEM_CUSTOM */
     if (!initialized) {
         ll->send_fn = esp_transmit_data; /* Set callback function to send data */
-        ll->reset_fn = reset_device;     /* Set callback for hardware reset */
+        ll->reset_fn = NULL;//reset_device;     /* Set callback for hardware reset */
     }
 
     if (!xxx_uart_initialized) {
