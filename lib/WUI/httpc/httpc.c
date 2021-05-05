@@ -65,7 +65,7 @@ void httpc_loop() {
             httpcstate = HTTPC_STATE_CLOSE;
     } break;
     case HTTPC_STATE_SEND: {
-        snprintf(tx_buffer, TX_BUFFER_LEN, "%s:%ld", "message", message_count);
+        //snprintf(tx_buffer, TX_BUFFER_LEN, "%s:%ld", "message", message_count);
         int ret = send(sock_httpc, tx_buffer, strlen(tx_buffer), 0);
         if (0 > ret) {
             httpcstate = HTTPC_STATE_CLOSE;
