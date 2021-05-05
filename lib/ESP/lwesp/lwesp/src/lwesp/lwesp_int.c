@@ -39,6 +39,8 @@
 #include "lwesp/lwesp_unicode.h"
 #include "system/lwesp_ll.h"
 
+#include "usbd_cdc_if.h"
+
 #if !__DOXYGEN__
 /**
  * \brief           Receive character structure to handle full line terminated with `\n` character
@@ -555,6 +557,14 @@ static void
 lwespi_parse_received(lwesp_recv_t *rcv) {
     uint8_t is_ok = 0, is_error = 0, is_ready = 0;
     const char *s;
+
+    //_dbg("ESP UART: %.*s", rcv->len, rcv->data);
+
+    while(1) {
+        if(CDC_Transmit_FS((uint8_t *)rcv->data, rcv->len) == USBD_OK) {
+            break;
+        }
+    }
 
     /* Try to remove non-parsable strings */
     if ((rcv->len == 2 && rcv->data[0] == '\r' && rcv->data[1] == '\n')
