@@ -365,23 +365,21 @@ void StartWebServerTask(void const *argument) {
     osThreadDef(httpcTask, StarthttpcTask, osPriorityNormal, 0, 512);
     httpcTaskHandle = osThreadCreate(osThread(httpcTask), NULL);
 
-    lwesp_mode_t mode = LWESP_MODE_STA_AP;
     // lwesp stuffs
     if (lwesp_init(NULL, 1) != lwespOK) {
-        printf("Cannot initialize LwESP!\r\n");
+        _dbg("Cannot initialize LwESP!\r\n");
     } else {
-        printf("LwESP initialized!\r\n");
+        _dbg("LwESP initialized!\r\n");
     }
 
+    // MODE TEST
     lwesp_mode_t mode = LWESP_MODE_STA_AP;
-
-    // AP MODE TEST
-    lwesp_set_wifi_mode(LWESP_MODE_AP, NULL, NULL, 0);
+    lwesp_set_wifi_mode(LWESP_MODE_STA, NULL, NULL, 0);
     for (;;) {
         update_eth_changes();
         sync_with_marlin_server();
         lwesp_get_wifi_mode(&mode, NULL, NULL, 0);
-        if (mode == LWESP_MODE_AP) {
+        if (mode == LWESP_MODE_STA) {
             _dbg("sta mode test ok");
 			break;
         } else {
@@ -398,11 +396,11 @@ void StartWebServerTask(void const *argument) {
         lwesp_ip_t ip;
         uint8_t is_dhcp;
 
-        printf("Connected to network!\r\n");
+        _dbg("Connected to network!\r\n");
 
         lwesp_sta_copy_ip(&ip, NULL, NULL, &is_dhcp);
         _dbg("STATION IP: %d.%d.%d.%d", ip.ip[0], ip.ip[1], ip.ip[2], ip.ip[3]);
-        printf("; Is DHCP: %d\r\n", (int)is_dhcp);
+        _dbg("; Is DHCP: %d\r\n", (int)is_dhcp);
     } else {
         _dbg("AP join FAILED, res: %d", err);
     }
