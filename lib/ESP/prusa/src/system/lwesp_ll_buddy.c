@@ -4,6 +4,9 @@
 #include "system/lwesp_ll.h"
 #include "lwesp_ll_buddy.h"
 
+#include "usbd_cdc_if.h"
+
+
 /*
  * UART and other pin configuration for ESP01 module
  *
@@ -58,6 +61,16 @@ void esp_receive_data(UART_HandleTypeDef *huart) {
     }
 }
 
+static void xxx_input(uint8_t *data, size_t len) {
+    while(1) {
+        if(CDC_Transmit_FS(data, len) == USBD_OK) {
+            break;
+        }
+    }
+
+    lwesp_input_process(data, len);
+}
+
 /**
  * \brief           USART data processing
  */
@@ -76,11 +89,11 @@ void StartUartBufferThread(void const *arg) {
         pos = sizeof(dma_buffer_rx) - dma_bytes_left;
         if (pos != old_pos && esp_get_operating_mode() == ESP_RUNNING_MODE) {
             if (pos > old_pos) {
-                lwesp_input_process(&dma_buffer_rx[old_pos], pos - old_pos);
+                xxx_input(&dma_buffer_rx[old_pos], pos - old_pos);
             } else {
-                lwesp_input_process(&dma_buffer_rx[old_pos], sizeof(dma_buffer_rx) - old_pos);
+                xxx_input(&dma_buffer_rx[old_pos], sizeof(dma_buffer_rx) - old_pos);
                 if (pos > 0) {
-                    lwesp_input_process(&dma_buffer_rx[0], pos);
+                    xxx_input(&dma_buffer_rx[0], pos);
                 }
             }
             old_pos = pos;
