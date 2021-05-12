@@ -43,8 +43,8 @@
 
 #if LWIP_SOCKET /* don't build if not configured for use in lwipopts.h */
 
-#include "lwesp/lwesp.h"
-#include "lwesp/lwesp_netconn.h"
+#include "esp.h"
+#include "esp/esp_netconn.h"
 
 #include "lwip/sockets.h"
 #include "lwesp_sockets_priv.h"

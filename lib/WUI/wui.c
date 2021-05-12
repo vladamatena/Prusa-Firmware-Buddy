@@ -26,6 +26,8 @@
 
 osThreadId httpcTaskHandle;
 
+extern void netconn_client_thread(void const *arg);
+
 #define WUI_NETIF_SETUP_DELAY  1000
 #define WUI_COMMAND_QUEUE_SIZE WUI_WUI_MQ_CNT // maximal number of messages at once in WUI command messageQ
 
@@ -130,7 +132,7 @@ void socket_listen_test_lwip() {
 
     _dbg("CONNECTION CLOSED\n");
 }
-
+/*
 void socket_listen_test_lwesp() {
     _dbg("LWESP TCP HELLO SERVER TEST\n");
     int listenfd = lwesp_socket(AF_INET, SOCK_STREAM, 0);
@@ -180,28 +182,28 @@ void socket_listen_test_lwesp() {
 
     _dbg("CONNECTION CLOSED\n");
 }
-
+*/
 void netconn_listen_test() {
-    lwespr_t res;
-    lwesp_netconn_p server, client;
-    lwesp_pbuf_p p;
+    uint32_t res;
+    esp_netconn_p server, client;
+    esp_pbuf_p p;
 
     /* Create netconn for server */
-    server = lwesp_netconn_new(LWESP_NETCONN_TYPE_TCP);
+    server = esp_netconn_new(ESP_NETCONN_TYPE_TCP);
     if (server == NULL) {
         _dbg("Cannot create server netconn!\r\n");
     }
 
     /* Bind it to port 5000 */
-    res = lwesp_netconn_bind(server, 5000);
-    if (res != lwespOK) {
+    res = esp_netconn_bind(server, 5000);
+    if (res != 0) {
         _dbg("Cannot bind server\r\n");
         goto out;
     }
 
     /* Start listening for incoming connections with maximal 1 client */
-    res = lwesp_netconn_listen_with_max_conn(server, 1);
-    if (res != lwespOK) {
+    res = esp_netconn_listen_with_max_conn(server, 1);
+    if (res != 0) {
         _dbg("Cannot listen server\r\n");
         goto out;
     }
@@ -209,20 +211,20 @@ void netconn_listen_test() {
     /* Unlimited loop */
     while (1) {
         /* Accept new client */
-        res = lwesp_netconn_accept(server, &client);
-        if (res != lwespOK) {
+        res = esp_netconn_accept(server, &client);
+        if (res != espOK) {
             break;
         }
         _dbg("New client accepted!\r\n");
         while (1) {
             /* Receive data */
-            res = lwesp_netconn_receive(client, &p);
-            if (res == lwespOK) {
+            res = esp_netconn_receive(client, &p);
+            if (res == espOK) {
                 _dbg("Data received!\r\n");
-                lwesp_pbuf_free(p);
+                esp_pbuf_free(p);
             } else {
                 _dbg("Netconn receive returned: %d\r\n", (int)res);
-                if (res == lwespCLOSED) {
+                if (res == espCLOSED) {
                     _dbg("Connection closed by client\r\n");
                     break;
                 }
@@ -230,22 +232,22 @@ void netconn_listen_test() {
         }
         /* Delete client */
         if (client != NULL) {
-            lwesp_netconn_delete(client);
+            esp_netconn_delete(client);
             client = NULL;
         }
     }
     /* Delete client */
     if (client != NULL) {
-        lwesp_netconn_delete(client);
+        esp_netconn_delete(client);
         client = NULL;
     }
 
 out:
     printf("Terminating netconn thread!\r\n");
     if (server != NULL) {
-        lwesp_netconn_delete(server);
+        esp_netconn_delete(server);
     }
-    lwesp_sys_thread_terminate(NULL);
+    esp_sys_thread_terminate(NULL);
 }
 
 #define NETCONN_HOST        "10.42.0.1"
@@ -260,16 +262,16 @@ request_header[] = ""
 
 
 void netconn_client_test() {
-    lwespr_t res;
-    lwesp_pbuf_p pbuf;
-    lwesp_netconn_p client;
+    espr_t res;
+    esp_pbuf_p pbuf;
+    esp_netconn_p client;
 
     /*
      * First create a new instance of netconn
      * connection and initialize system message boxes
      * to accept received packet buffers
      */
-    client = lwesp_netconn_new(LWESP_NETCONN_TYPE_TCP);
+    client = esp_netconn_new(ESP_NETCONN_TYPE_TCP);
     if (client != NULL) {
         /*
          * Connect to external server as client
@@ -277,14 +279,14 @@ void netconn_client_test() {
          *
          * Function will block thread until we are successfully connected (or not) to server
          */
-        res = lwesp_netconn_connect(client, NETCONN_HOST, NETCONN_PORT);
-        if (res == lwespOK) {                     /* Are we successfully connected? */
+        res = esp_netconn_connect(client, NETCONN_HOST, NETCONN_PORT);
+        if (res == espOK) {                     /* Are we successfully connected? */
             _dbg("Connected to " NETCONN_HOST "\r\n");
-            res = lwesp_netconn_write(client, request_header, sizeof(request_header) - 1);    /* Send data to server */
-            if (res == lwespOK) {
-                res = lwesp_netconn_flush(client);    /* Flush data to output */
+            res = esp_netconn_write(client, request_header, sizeof(request_header) - 1);    /* Send data to server */
+            if (res == espOK) {
+                res = esp_netconn_flush(client);    /* Flush data to output */
             }
-            if (res == lwespOK) {                 /* Were data sent? */
+            if (res == espOK) {                 /* Were data sent? */
                 _dbg("Data were successfully sent to server\r\n");
 
                 /*
@@ -303,15 +305,15 @@ void netconn_client_test() {
                      * Returned status will give you info in case connection
                      * was closed too early from remote side
                      */
-                    res = lwesp_netconn_receive(client, &pbuf);
-                    if (res == lwespCLOSED) {     /* Was the connection closed? This can be checked by return status of receive function */
+                    res = esp_netconn_receive(client, &pbuf);
+                    if (res == espCLOSED) {     /* Was the connection closed? This can be checked by return status of receive function */
                         _dbg("Connection closed by remote side...\r\n");
                         break;
-                    } else if (res == lwespTIMEOUT) {
+                    } else if (res == espTIMEOUT) {
                         _dbg("Netconn timeout while receiving data. You may try multiple readings before deciding to close manually\r\n");
                     }
 
-                    if (res == lwespOK && pbuf != NULL) { /* Make sure we have valid packet buffer */
+                    if (res == espOK && pbuf != NULL) { /* Make sure we have valid packet buffer */
                         /*
                          * At this point read and manipulate
                          * with received buffer and check if you expect more data
@@ -319,8 +321,8 @@ void netconn_client_test() {
                          * After you are done using it, it is important
                          * you free the memory otherwise memory leaks will appear
                          */
-                        _dbg("Received new data packet of %d bytes\r\n", (int)lwesp_pbuf_length(pbuf, 1));
-                        lwesp_pbuf_free(pbuf);    /* Free the memory after usage */
+                        _dbg("Received new data packet of %d bytes\r\n", (int)esp_pbuf_length(pbuf, 1));
+                        esp_pbuf_free(pbuf);    /* Free the memory after usage */
                         pbuf = NULL;
                     }
                 } while (1);
@@ -332,20 +334,20 @@ void netconn_client_test() {
              * Check if connection was closed by remote server
              * and in case it wasn't, close it manually
              */
-            if (res != lwespCLOSED) {
-                lwesp_netconn_close(client);
+            if (res != espCLOSED) {
+                esp_netconn_close(client);
             }
         } else {
             _dbg("Cannot connect to remote host %s:%d!, res: %d\r\n", NETCONN_HOST, NETCONN_PORT, res);
         }
-        lwesp_netconn_delete(client);             /* Delete netconn structure */
+        esp_netconn_delete(client);             /* Delete netconn structure */
     }
 
-    lwesp_sys_thread_terminate(NULL);             /* Terminate current thread */
+    esp_sys_thread_terminate(NULL);             /* Terminate current thread */
 }
 
 void StartWebServerTask(void const *argument) {
-    ap_entry_t ap = { "SSID", "password" };
+    ap_entry_t ap = { "esptest", "lwesp8266" };
     uint32_t res;
 
     // get settings from ini file
@@ -379,7 +381,7 @@ void StartWebServerTask(void const *argument) {
         esp_sys_thread_create(NULL, "netconn_client", (esp_sys_thread_fn)netconn_client_thread, NULL, 512, ESP_SYS_THREAD_PRIO);
     }
 
-    // MODE TEST
+    /*// MODE TEST
     lwesp_mode_t mode = LWESP_MODE_STA_AP;
     lwesp_set_wifi_mode(LWESP_MODE_STA, NULL, NULL, 0);
     for (;;) {
@@ -394,8 +396,8 @@ void StartWebServerTask(void const *argument) {
             _dbg("ap mode test FAIL, mode: %d", mode);
         }
         osDelay(1000);
-    }
-
+    }*/
+/*
     // sta connect to ap
     lwespr_t err = lwesp_sta_join("esptest", "lwesp8266", NULL, NULL, NULL, 1);
     if(err == lwespOK) {
@@ -411,7 +413,7 @@ void StartWebServerTask(void const *argument) {
         _dbg("; Is DHCP: %d\r\n", (int)is_dhcp);
     } else {
         _dbg("AP join FAILED, res: %d", err);
-    }
+    }*/
 
     /*lwesp_ip_t ip, gw, nm;
     lwesp_ap_getip(&ip, &gw, &nm, NULL, NULL, 1);
@@ -422,6 +424,6 @@ void StartWebServerTask(void const *argument) {
 
     netconn_listen_test();
     
-    socket_listen_test_lwesp();
+ //   socket_listen_test_lwesp();
 }
 

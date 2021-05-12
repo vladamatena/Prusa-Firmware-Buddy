@@ -44,7 +44,7 @@
  * sockets are implemented on top of them */
 
 #include "lwip/err.h"
-#include "lwesp/lwesp_pbuf.h"
+#include "esp/esp_pbuf.h"
 #include "lwip/ip_addr.h"
 #include "lwip/ip6_addr.h"
 

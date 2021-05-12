@@ -71,8 +71,8 @@ union lwesp_sock_lastdata {
 typedef struct lwesp_netconn {
     struct lwesp_netconn *next; /*!< Linked list entry */
 
-    lwesp_netconn_type_t type; /*!< Netconn type */
-    lwesp_port_t listen_port;  /*!< Port on which we are listening */
+    esp_netconn_type_t type; /*!< Netconn type */
+    esp_port_t listen_port;  /*!< Port on which we are listening */
 
     size_t rcv_packets; /*!< Number of received packets so far on this connection */
     lwesp_conn_p conn;  /*!< Pointer to actual connection */
