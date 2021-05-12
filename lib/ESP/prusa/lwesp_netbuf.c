@@ -82,7 +82,7 @@ lwesp_netbuf_delete(struct lwesp_netbuf *buf)
 {
   if (buf != NULL) {
     if (buf->p != NULL) {
-      lwesp_pbuf_free(buf->p);
+      esp_pbuf_free(buf->p);
       buf->p = buf->ptr = NULL;
     }
     memp_free(MEMP_NETBUF, buf);
@@ -105,7 +105,7 @@ lwesp_netbuf_alloc(struct lwesp_netbuf *buf, u16_t size)
 
   /* Deallocate any previously allocated memory. */
   if (buf->p != NULL) {
-    lwesp_pbuf_free(buf->p);
+    esp_pbuf_free(buf->p);
   }
 
 //   buf->p = lwesp_pbuf_alloc(PBUF_TRANSPORT, size, PBUF_RAM);
@@ -132,7 +132,7 @@ lwesp_netbuf_free(struct lwesp_netbuf *buf)
 {
   LWIP_ERROR("netbuf_free: invalid buf", (buf != NULL), return;);
   if (buf->p != NULL) {
-    lwesp_pbuf_free(buf->p);
+    esp_pbuf_free(buf->p);
   }
   buf->p = buf->ptr = NULL;
 #if LWIP_CHECKSUM_ON_COPY
@@ -156,7 +156,7 @@ lwesp_netbuf_ref(struct lwesp_netbuf *buf, const void *dataptr, u16_t size)
 {
   LWIP_ERROR("netbuf_ref: invalid buf", (buf != NULL), return ERR_ARG;);
   if (buf->p != NULL) {
-    lwesp_pbuf_free(buf->p);
+    esp_pbuf_free(buf->p);
   }
 
 //   buf->p = lwesp_pbuf_alloc(PBUF_TRANSPORT, 0, PBUF_REF);

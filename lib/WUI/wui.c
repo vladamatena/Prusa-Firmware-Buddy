@@ -415,7 +415,7 @@ void StartWebServerTask(void const *argument) {
     if(err == lwespOK) {
         _dbg("sta join ok\n");
 
-        lwesp_ip_t ip;
+        esp_ip_t ip;
         uint8_t is_dhcp;
 
         _dbg("Connected to network!\r\n");
@@ -427,7 +427,7 @@ void StartWebServerTask(void const *argument) {
         _dbg("AP join FAILED, res: %d", err);
     }*/
 
-    /*lwesp_ip_t ip, gw, nm;
+    /*esp_ip_t ip, gw, nm;
     lwesp_ap_getip(&ip, &gw, &nm, NULL, NULL, 1);
     _dbg("AP IP: %d.%d.%d.%d", ip.ip[0], ip.ip[1], ip.ip[2], ip.ip[3]);*/
 

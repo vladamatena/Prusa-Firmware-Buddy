@@ -60,38 +60,37 @@ extern "C" {
 
 union lwesp_sock_lastdata {
   struct lwesp_netbuf *netbuf;
-  struct lwesp_pbuf *pbuf;
+  struct esp_pbuf *pbuf;
 };
 
 
 
 
 
-// TODO: Dupliacete definition, lwesp does not publicky share complete definition of the lwesp_netconn type
-typedef struct lwesp_netconn {
-    struct lwesp_netconn *next; /*!< Linked list entry */
+// TODO: Dupliacete definition, lwesp does not publicky share complete definition of the esp_netconn type
+typedef struct esp_netconn {
+    struct esp_netconn* next;                   /*!< Linked list entry */
 
-    esp_netconn_type_t type; /*!< Netconn type */
-    esp_port_t listen_port;  /*!< Port on which we are listening */
+    esp_netconn_type_t type;                    /*!< Netconn type */
+    esp_port_t listen_port;                     /*!< Port on which we are listening */
 
-    size_t rcv_packets; /*!< Number of received packets so far on this connection */
-    lwesp_conn_p conn;  /*!< Pointer to actual connection */
+    size_t rcv_packets;                         /*!< Number of received packets so far on this connection */
+    esp_conn_p conn;                            /*!< Pointer to actual connection */
 
-    lwesp_sys_mbox_t mbox_accept;  /*!< List of active connections waiting to be processed */
-    lwesp_sys_mbox_t mbox_receive; /*!< Message queue for receive mbox */
-    size_t mbox_receive_entries;   /*!< Number of entries written to receive mbox */
+    esp_sys_mbox_t mbox_accept;                 /*!< List of active connections waiting to be processed */
+    esp_sys_mbox_t mbox_receive;                /*!< Message queue for receive mbox */
 
-    lwesp_linbuff_t buff; /*!< Linear buffer structure */
+    esp_linbuff_t buff;                         /*!< Linear buffer structure */
 
-    uint16_t conn_timeout; /*!< Connection timeout in units of seconds when
+    uint16_t conn_timeout;                      /*!< Connection timeout in units of seconds when
                                                     netconn is in server (listen) mode.
                                                     Connection will be automatically closed if there is no
                                                     data exchange in time. Set to `0` when timeout feature is disabled. */
 
-    #if LWESP_CFG_NETCONN_RECEIVE_TIMEOUT || __DOXYGEN__
-    uint32_t rcv_timeout; /*!< Receive timeout in unit of milliseconds */
-    #endif
-} lwesp_netconn_t;
+#if ESP_CFG_NETCONN_RECEIVE_TIMEOUT || __DOXYGEN__
+    uint32_t rcv_timeout;                       /*!< Receive timeout in unit of milliseconds */
+#endif
+} esp_netconn_t;
 
 
 
@@ -104,7 +103,7 @@ typedef struct lwesp_netconn {
 /** Contains all internal pointers and states used for a socket */
 struct lwesp_sock {
   /** sockets currently are built on netconns, each socket has one netconn */
-  struct lwesp_netconn *conn;
+  struct esp_netconn *conn;
   /** data that was left from the previous read */
   union lwesp_sock_lastdata lastdata;
 #if LWIP_SOCKET_SELECT || LWIP_SOCKET_POLL
