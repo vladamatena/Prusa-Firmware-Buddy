@@ -229,6 +229,12 @@ void netconn_listen_test() {
                     break;
                 }
             }
+
+            static const char request_header[] = "@@@SERVER RESPONSE DATA###";
+            res = esp_netconn_write(client, request_header, sizeof(request_header) - 1);    /* Send data to client */
+            if (res == espOK) {
+                res = esp_netconn_flush(client);    /* Flush data to output */
+            }
         }
         /* Delete client */
         if (client != NULL) {
@@ -265,6 +271,8 @@ void netconn_client_test() {
     espr_t res;
     esp_pbuf_p pbuf;
     esp_netconn_p client;
+
+    _dbg("Netconn client test");
 
     /*
      * First create a new instance of netconn
@@ -378,8 +386,12 @@ void StartWebServerTask(void const *argument) {
 
     if (!esp_connect_to_AP(&ap)) {
         _dbg("LwESP connect to AP %s!", ap.ssid);
-        esp_sys_thread_create(NULL, "netconn_client", (esp_sys_thread_fn)netconn_client_thread, NULL, 512, ESP_SYS_THREAD_PRIO);
+        //esp_sys_thread_create(NULL, "netconn_client", (esp_sys_thread_fn)netconn_client_thread, NULL, 512, ESP_SYS_THREAD_PRIO);
+
+        netconn_client_test();
+
     }
+    _dbg("AP connect FAILED");
 
     /*// MODE TEST
     lwesp_mode_t mode = LWESP_MODE_STA_AP;
@@ -420,9 +432,7 @@ void StartWebServerTask(void const *argument) {
     _dbg("AP IP: %d.%d.%d.%d", ip.ip[0], ip.ip[1], ip.ip[2], ip.ip[3]);*/
 
 
-    netconn_client_test();
-
-    netconn_listen_test();
+  
     
  //   socket_listen_test_lwesp();
 }
