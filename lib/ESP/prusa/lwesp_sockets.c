@@ -63,6 +63,7 @@
 #include "lwip/inet_chksum.h"
 #endif
 
+#include "lwesp_sockets.h"
 #include "lwesp_netbuf.h"
 
 #if LWIP_COMPAT_SOCKETS == 2 && LWIP_POSIX_SOCKETS_IO_NAMES
@@ -256,7 +257,7 @@ struct netconn_socket_record {
 	int socket;
 };
 
-struct netconn_socket_record netconn_socket_mapping[NETCONN_SOCKET_MAPPING_MAX];
+struct netconn_socket_record netconn_socket_mapping[NETCONN_SOCKET_MAPPING_MAX] = {{0,-1},{0,-1},{0,-1},{0,-1},{0,-1},{0,-1},{0,-1},{0,-1},{0,-1},{0,-1}};
 
 static int get_netconn_socket(esp_netconn_t *conn) {
 	for(uint i = 0; i < NETCONN_SOCKET_MAPPING_MAX; i++) {
@@ -697,7 +698,7 @@ lwesp_accept(int s, struct sockaddr *addr, socklen_t *addrlen)
   err = esp_netconn_accept(sock->conn, &newconn);
   if (err != ERR_OK) {
     LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_accept(%d): netconn_acept failed, err=%d\n", s, err));
-    if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) != NETCONN_TCP) {
+    if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) != ESP_CONN_TYPE_TCP) {
       sock_set_errno(sock, EOPNOTSUPP);
     } else if (err == ERR_CLSD) {
       sock_set_errno(sock, EINVAL);
@@ -863,7 +864,7 @@ lwesp_close(int s)
   }
 
   if (sock->conn != NULL) {
-    is_tcp = NETCONNTYPE_GROUP(netconn_type(sock->conn)) == NETCONN_TCP;
+    is_tcp = NETCONNTYPE_GROUP(netconn_type(sock->conn)) == ESP_CONN_TYPE_TCP;
   } else {
     LWIP_ASSERT("sock->lastdata == NULL", sock->lastdata.pbuf == NULL);
   }
@@ -878,7 +879,7 @@ lwesp_close(int s)
 #endif /* LWIP_IPV6_MLD */
 
 //   err = esp_netconn_prepare_delete(sock->conn);
-  err = esp_netconn_delete(sock->conn); // TODO: Check this is ok
+  err = esp_netconn_close(sock->conn);
   
   if (err != ERR_OK) {
     sock_set_errno(sock, err_to_errno(err));
@@ -886,6 +887,7 @@ lwesp_close(int s)
     return -1;
   }
 
+  esp_netconn_delete(sock->conn);
   free_socket(sock, is_tcp);
   set_errno(0);
   return 0;
@@ -983,7 +985,7 @@ lwesp_listen(int s, int backlog)
 
   if (err != ERR_OK) {
     LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_listen(%d) failed, err=%d\n", s, err));
-    if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) != NETCONN_TCP) {
+    if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) != ESP_CONN_TYPE_TCP) {
       sock_set_errno(sock, EOPNOTSUPP);
     } else {
       sock_set_errno(sock, err_to_errno(err));
@@ -1010,7 +1012,7 @@ lwip_recv_tcp(struct lwesp_sock *sock, void *mem, size_t len, int flags)
   ssize_t recv_left = (len <= SSIZE_MAX) ? (ssize_t)len : SSIZE_MAX;
 
   LWIP_ASSERT("no socket given", sock != NULL);
-  LWIP_ASSERT("this should be checked internally", NETCONNTYPE_GROUP(netconn_type(sock->conn)) == NETCONN_TCP);
+  LWIP_ASSERT("this should be checked internally", NETCONNTYPE_GROUP(netconn_type(sock->conn)) == ESP_CONN_TYPE_TCP);
 
   if (flags & MSG_DONTWAIT) {
     apiflags |= NETCONN_DONTBLOCK;
@@ -1108,7 +1110,7 @@ lwip_recv_tcp_done:
   if ((recvd > 0) && !(flags & MSG_PEEK)) {
     /* ensure window update after copying all data */
 
-//     esp_netconn_tcp_recvd(sock->conn, (size_t)recvd); // TODO: Fix there is no counterpart to call in lwesp
+//     esp_ESP_CONN_TYPE_TCP_recvd(sock->conn, (size_t)recvd); // TODO: Fix there is no counterpart to call in lwesp
 
   }
   sock_set_errno(sock, 0);
@@ -1317,7 +1319,7 @@ lwesp_recvfrom(int s, void *mem, size_t len, int flags,
     return -1;
   }
 #if LWIP_TCP
-  if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == NETCONN_TCP) {
+  if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == ESP_CONN_TYPE_TCP) {
     ret = lwip_recv_tcp(sock, mem, len, flags);
     lwip_recv_tcp_from(sock, from, fromlen, "lwip_recvfrom", s, ret);
     done_socket(sock);
@@ -1338,7 +1340,8 @@ lwesp_recvfrom(int s, void *mem, size_t len, int flags,
     msg.msg_iovlen = 1;
     msg.msg_name = from;
     msg.msg_namelen = (fromlen ? *fromlen : 0);
-    err = lwip_recvfrom_udp_raw(sock, flags, &msg, &datagram_len, s);
+    // TODO: This needs to be inplemented
+    //err = lwip_recvfrom_udp_raw(sock, flags, &msg, &datagram_len, s);
     if (err != ERR_OK) {
       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_recvfrom[UDP/RAW](%d): buf == NULL, error is \"%s\"!\n",
                                   s, lwip_strerr(err)));
@@ -1360,7 +1363,7 @@ lwesp_recvfrom(int s, void *mem, size_t len, int flags,
 ssize_t
 lwesp_read(int s, void *mem, size_t len)
 {
-  return lwip_recvfrom(s, mem, len, 0, NULL, NULL);
+  return lwesp_recvfrom(s, mem, len, 0, NULL, NULL);
 }
 
 ssize_t
@@ -1421,7 +1424,7 @@ lwesp_recvmsg(int s, struct msghdr *message, int flags)
     buflen = (ssize_t)(buflen + (ssize_t)message->msg_iov[i].iov_len);
   }
 
-  if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == NETCONN_TCP) {
+  if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == ESP_CONN_TYPE_TCP) {
 #if LWIP_TCP
     int recv_flags = flags;
     message->msg_flags = 0;
@@ -1503,10 +1506,10 @@ lwesp_send(int s, const void *data, size_t size, int flags)
     return -1;
   }
 
-  if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) != NETCONN_TCP) {
+  if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) != ESP_NETCONN_TYPE_TCP) {
 #if (LWIP_UDP || LWIP_RAW)
     done_socket(sock);
-    return lwip_sendto(s, data, size, flags, NULL, 0);
+    return lwesp_sendto(s, data, size, flags, NULL, 0);
 #else /* (LWIP_UDP || LWIP_RAW) */
     sock_set_errno(sock, err_to_errno(ERR_ARG));
     done_socket(sock);
@@ -1557,7 +1560,7 @@ lwesp_sendmsg(int s, const struct msghdr *msg, int flags)
   LWIP_UNUSED_ARG(msg->msg_controllen);
   LWIP_UNUSED_ARG(msg->msg_flags);
 
-  if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == NETCONN_TCP) {
+  if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == ESP_CONN_TYPE_TCP) {
 #if LWIP_TCP
     write_flags = (u8_t)(NETCONN_COPY |
                          ((flags & MSG_MORE)     ? NETCONN_MORE      : 0) |
@@ -1714,7 +1717,7 @@ lwesp_sendto(int s, const void *data, size_t size, int flags,
     return -1;
   }
 
-  if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == NETCONN_TCP) {
+  if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == ESP_CONN_TYPE_TCP) {
 #if LWIP_TCP
     done_socket(sock);
     return lwip_send(s, data, size, flags);
@@ -1840,7 +1843,7 @@ lwesp_socket(int domain, int type, int protocol)
       break;
     case SOCK_STREAM:
 
-//       conn = esp_netconn_new_with_callback(DOMAIN_TO_NETCONN_TYPE(domain, NETCONN_TCP), DEFAULT_SOCKET_EVENTCB);
+//       conn = esp_netconn_new_with_callback(DOMAIN_TO_NETCONN_TYPE(domain, ESP_CONN_TYPE_TCP), DEFAULT_SOCKET_EVENTCB);
 //       TODO: Not available in lwesp, needs to be reimplemented
       conn = esp_netconn_new(ESP_NETCONN_TYPE_TCP);
 
@@ -1882,7 +1885,7 @@ lwesp_socket(int domain, int type, int protocol)
 ssize_t
 lwesp_write(int s, const void *data, size_t size)
 {
-  return lwip_send(s, data, size, 0);
+  return lwesp_send(s, data, size, 0);
 }
 
 ssize_t
@@ -2819,7 +2822,7 @@ lwesp_shutdown(int s, int how)
   if (/*sock->conn != NULL*/ 1) {
   // TODO: lwesp conn has not socket member, needs to be handled by external map
   
-    if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) != NETCONN_TCP) {
+    if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) != ESP_CONN_TYPE_TCP) {
       sock_set_errno(sock, EOPNOTSUPP);
       done_socket(sock);
       return -1;
@@ -3061,7 +3064,7 @@ lwesp_getsockname(int s, struct sockaddr *name, socklen_t *namelen)
 // #if LWIP_TCP
 //         case SO_ACCEPTCONN:
 //           LWIP_SOCKOPT_CHECK_OPTLEN_CONN_PCB(sock, *optlen, int);
-//           if (NETCONNTYPE_GROUP(sock->conn->type) != NETCONN_TCP) {
+//           if (NETCONNTYPE_GROUP(sock->conn->type) != ESP_CONN_TYPE_TCP) {
 //             done_socket(sock);
 //             return ENOPROTOOPT;
 //           }
@@ -3099,7 +3102,7 @@ lwesp_getsockname(int s, struct sockaddr *name, socklen_t *namelen)
 //             case NETCONN_RAW:
 //               *(int *)optval = SOCK_RAW;
 //               break;
-//             case NETCONN_TCP:
+//             case ESP_CONN_TYPE_TCP:
 //               *(int *)optval = SOCK_STREAM;
 //               break;
 //             case NETCONN_UDP:
@@ -3236,7 +3239,7 @@ lwesp_getsockname(int s, struct sockaddr *name, socklen_t *namelen)
 //     /* Level: IPPROTO_TCP */
 //     case IPPROTO_TCP:
 //       /* Special case: all IPPROTO_TCP option take an int */
-//       LWIP_SOCKOPT_CHECK_OPTLEN_CONN_PCB_TYPE(sock, *optlen, int, NETCONN_TCP);
+//       LWIP_SOCKOPT_CHECK_OPTLEN_CONN_PCB_TYPE(sock, *optlen, int, ESP_CONN_TYPE_TCP);
 //       if (sock->conn->pcb.tcp->state == LISTEN) {
 //         done_socket(sock);
 //         return EINVAL;
@@ -3594,7 +3597,7 @@ lwesp_getsockname(int s, struct sockaddr *name, socklen_t *namelen)
 // 
 //           switch (NETCONNTYPE_GROUP(netconn_type(sock->conn))) {
 // #if LWIP_TCP
-//             case NETCONN_TCP:
+//             case ESP_CONN_TYPE_TCP:
 //               tcp_bind_netif(sock->conn->pcb.tcp, n);
 //               break;
 // #endif
@@ -3709,7 +3712,7 @@ lwesp_getsockname(int s, struct sockaddr *name, socklen_t *namelen)
 //     /* Level: IPPROTO_TCP */
 //     case IPPROTO_TCP:
 //       /* Special case: all IPPROTO_TCP option take an int */
-//       LWIP_SOCKOPT_CHECK_OPTLEN_CONN_PCB_TYPE(sock, optlen, int, NETCONN_TCP);
+//       LWIP_SOCKOPT_CHECK_OPTLEN_CONN_PCB_TYPE(sock, optlen, int, ESP_CONN_TYPE_TCP);
 //       if (sock->conn->pcb.tcp->state == LISTEN) {
 //         done_socket(sock);
 //         return EINVAL;
@@ -3920,7 +3923,7 @@ lwesp_getsockname(int s, struct sockaddr *name, socklen_t *namelen)
 //         return -1;
 //       }
 // #if LWIP_FIONREAD_LINUXMODE
-//       if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) != NETCONN_TCP) {
+//       if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) != ESP_CONN_TYPE_TCP) {
 //         struct netbuf *nb;
 //         if (sock->lastdata.netbuf) {
 //           nb = sock->lastdata.netbuf;
@@ -3949,7 +3952,7 @@ lwesp_getsockname(int s, struct sockaddr *name, socklen_t *namelen)
 // 
 //       /* Check if there is data left from the last recv operation. /maq 041215 */
 //       if (sock->lastdata.netbuf) {
-//         if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == NETCONN_TCP) {
+//         if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == ESP_CONN_TYPE_TCP) {
 //           recv_avail += sock->lastdata.pbuf->tot_len;
 //         } else {
 //           recv_avail += sock->lastdata.netbuf->p->tot_len;
@@ -4007,7 +4010,7 @@ lwesp_getsockname(int s, struct sockaddr *name, socklen_t *namelen)
 //       ret = esp_netconn_is_nonblocking(sock->conn) ? O_NONBLOCK : 0;
 //       sock_set_errno(sock, 0);
 // 
-//       if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == NETCONN_TCP) {
+//       if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == ESP_CONN_TYPE_TCP) {
 // #if LWIP_TCPIP_CORE_LOCKING
 //         LOCK_TCPIP_CORE();
 // #else

@@ -132,7 +132,7 @@ void socket_listen_test_lwip() {
 
     _dbg("CONNECTION CLOSED\n");
 }
-/*
+
 void socket_listen_test_lwesp() {
     _dbg("LWESP TCP HELLO SERVER TEST\n");
     int listenfd = lwesp_socket(AF_INET, SOCK_STREAM, 0);
@@ -162,27 +162,34 @@ void socket_listen_test_lwesp() {
     
     _dbg("SOCKET LISTENING\n");
     
-    socklen_t len = sizeof(clientaddr);
-  
-    int connectionfd = lwesp_accept(listenfd, (struct sockaddr *)&clientaddr, &len);
-    if (connectionfd < 0) {
-        _dbg("ACCEPT FAILED\n");
-        return;
-    }
-    
-    _dbg("CONNECTION ACCEPTED\n");
+    for(;;) {
+        socklen_t len = sizeof(clientaddr);  
+        int connectionfd = lwesp_accept(listenfd, (struct sockaddr *)&clientaddr, &len);
+        if (connectionfd < 0) {
+            _dbg("ACCEPT FAILED\n");
+            return;
+        }
+        
+        _dbg("CONNECTION ACCEPTED\n");
 
-    const char buff[] = "Hello\n";
-    lwesp_write(connectionfd, buff, sizeof(buff));
-  
-    lwesp_close(connectionfd);
+        char buff[20];
+
+        lwesp_read(connectionfd, buff, sizeof(buff));
+        _dbg("Read: %s", buff);
+
+
+        sprintf(buff, "Hello, fd:%d\n", connectionfd);
+        lwesp_write(connectionfd, buff, sizeof(buff));
+    
+        lwesp_close(connectionfd);
+    }
   
     // After chatting close the socket
     lwesp_close(listenfd);
 
     _dbg("CONNECTION CLOSED\n");
 }
-*/
+
 void netconn_listen_test() {
     uint32_t res;
     esp_netconn_p server, client;
@@ -388,10 +395,12 @@ void StartWebServerTask(void const *argument) {
         _dbg("LwESP connect to AP %s!", ap.ssid);
         //esp_sys_thread_create(NULL, "netconn_client", (esp_sys_thread_fn)netconn_client_thread, NULL, 512, ESP_SYS_THREAD_PRIO);
 
-        netconn_client_test();
+        //netconn_client_test();
+        socket_listen_test_lwesp();
 
+    } else {
+        _dbg("AP connect FAILED");
     }
-    _dbg("AP connect FAILED");
 
     /*// MODE TEST
     lwesp_mode_t mode = LWESP_MODE_STA_AP;
