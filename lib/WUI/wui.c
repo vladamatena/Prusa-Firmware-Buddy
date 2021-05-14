@@ -133,6 +133,57 @@ void socket_listen_test_lwip() {
     _dbg("CONNECTION CLOSED\n");
 }
 
+void socket_connect_test_lwesp() {
+    _dbg("LWESP TCP HELLO CLIENT TEST\n");
+
+    int clientfd = lwesp_socket(AF_INET, SOCK_STREAM, 0);
+    if (clientfd == -1) {
+        _dbg("FAILED TO CREATE CLIENT SOCKET\n");
+        return;
+    }
+    _dbg("SOCKET CREATED\n");
+
+    struct sockaddr_in serveraddr;
+    bzero(&serveraddr, sizeof(serveraddr));
+    serveraddr.sin_family = AF_INET;
+    serveraddr.sin_addr.s_addr = inet_addr("10.42.0.1");
+    serveraddr.sin_port = htons(5000);
+  
+    if(lwesp_connect(clientfd, (const struct sockaddr *)&serveraddr, sizeof(serveraddr)) != espOK) {
+        _dbg("FAILED TO CONNECT TO SERVER");
+        return;
+    }
+    _dbg("SOCKET CONNECTED");
+
+    char buff[20];
+
+
+    int msgLen = sprintf(buff, "Hello, fd:%d\n", clientfd);
+    size_t writen = lwesp_write(clientfd, buff, msgLen);
+    if (writen != msgLen) {
+        _dbg("FAILED TO WRITE: %d bytes", msgLen);
+        return;
+    }
+
+    _dbg("READING 20 bytes FROM SOCKET");
+    size_t read = lwesp_read(clientfd, buff, sizeof(buff));
+    if(read != sizeof(buff)) {
+        _dbg("FAILED TO READ");
+        return;
+    }
+    _dbg("Read: %s", buff);
+
+
+
+
+    if(lwesp_close(clientfd) != espOK) {
+        _dbg("FAILED TO CLOSE");
+        return;
+    }
+
+    _dbg("SOCKET CLOSED");
+}
+
 void socket_listen_test_lwesp() {
     _dbg("LWESP TCP HELLO SERVER TEST\n");
     int listenfd = lwesp_socket(AF_INET, SOCK_STREAM, 0);
@@ -178,8 +229,8 @@ void socket_listen_test_lwesp() {
         _dbg("Read: %s", buff);
 
 
-        sprintf(buff, "Hello, fd:%d\n", connectionfd);
-        lwesp_write(connectionfd, buff, sizeof(buff));
+        int msgLen = sprintf(buff, "Hello, fd:%d\n", connectionfd);
+        lwesp_write(connectionfd, buff, msgLen);
     
         lwesp_close(connectionfd);
     }
@@ -396,6 +447,7 @@ void StartWebServerTask(void const *argument) {
         //esp_sys_thread_create(NULL, "netconn_client", (esp_sys_thread_fn)netconn_client_thread, NULL, 512, ESP_SYS_THREAD_PRIO);
 
         //netconn_client_test();
+        socket_connect_test_lwesp();
         socket_listen_test_lwesp();
 
     } else {
