@@ -59,7 +59,7 @@ extern "C" {
 
 /** "Network buffer" - contains data and addressing info */
 struct lwesp_netbuf {
-  struct lwesp_pbuf *p, *ptr;
+  struct esp_pbuf *p, *ptr;
   ip_addr_t addr;
   u16_t port;
 #if LWIP_NETBUF_RECVINFO || LWIP_CHECKSUM_ON_COPY
