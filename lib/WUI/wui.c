@@ -22,7 +22,7 @@
 #include "esp.h"
 
 #include "sockets.h" // LwIP sockets wrapper
-#include "lwesp_sockets.h"
+#include "sockets/lwesp_sockets.h"
 
 osThreadId httpcTaskHandle;
 

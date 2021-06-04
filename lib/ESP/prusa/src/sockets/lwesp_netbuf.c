@@ -46,7 +46,7 @@
 
 #if LWIP_NETCONN /* don't build if not configured for use in lwipopts.h */
 
-#include "lwesp_netbuf.h"
+#include "sockets/lwesp_netbuf.h"
 #include "lwip/memp.h"
 
 #include <string.h>

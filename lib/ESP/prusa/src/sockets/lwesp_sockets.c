@@ -47,7 +47,7 @@
 #include "esp/esp_netconn.h"
 
 #include "lwip/sockets.h"
-#include "lwesp_sockets_priv.h"
+#include "sockets/lwesp_sockets_priv.h"
 #include "lwip/api.h"
 #include "lwip/igmp.h"
 #include "lwip/inet.h"
@@ -63,8 +63,8 @@
 #include "lwip/inet_chksum.h"
 #endif
 
-#include "lwesp_sockets.h"
-#include "lwesp_netbuf.h"
+#include "sockets/lwesp_sockets.h"
+#include "sockets/lwesp_netbuf.h"
 #include "esp/esp_private.h"
 
 #if LWIP_COMPAT_SOCKETS == 2 && LWIP_POSIX_SOCKETS_IO_NAMES
