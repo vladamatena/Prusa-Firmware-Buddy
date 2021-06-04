@@ -74,20 +74,20 @@ struct lwesp_netbuf {
 /* Network buffer functions: */
 struct lwesp_netbuf *   lwesp_netbuf_new      (void);
 void              lwesp_netbuf_delete   (struct lwesp_netbuf *buf);
-void *            lwesp_netbuf_alloc    (struct lwesp_netbuf *buf, u16_t size);
+const void *            lwesp_netbuf_alloc    (struct lwesp_netbuf *buf, u16_t size);
 void              lwesp_netbuf_free     (struct lwesp_netbuf *buf);
 err_t             lwesp_netbuf_ref      (struct lwesp_netbuf *buf,
                                    const void *dataptr, u16_t size);
 void              lwesp_netbuf_chain    (struct lwesp_netbuf *head, struct lwesp_netbuf *tail);
 
 err_t             lwesp_netbuf_data     (struct lwesp_netbuf *buf,
-                                   void **dataptr, u16_t *len);
+                                   const void **dataptr, u16_t *len);
 s8_t              lwesp_netbuf_next     (struct lwesp_netbuf *buf);
 void              lwesp_netbuf_first    (struct lwesp_netbuf *buf);
 
 
 #define lwesp_netbuf_copy_partial(buf, dataptr, len, offset) \
-  pbuf_copy_partial((buf)->p, (dataptr), (len), (offset))
+  esp_pbuf_copy_partial((buf)->p, (dataptr), (len), (offset))
 #define lwesp_netbuf_copy(buf,dataptr,len) lwesp_netbuf_copy_partial(buf, dataptr, len, 0)
 #define lwesp_netbuf_take(buf, dataptr, len) lwesp_pbuf_take((buf)->p, dataptr, len)
 #define lwesp_netbuf_len(buf)              ((buf)->p->tot_len)

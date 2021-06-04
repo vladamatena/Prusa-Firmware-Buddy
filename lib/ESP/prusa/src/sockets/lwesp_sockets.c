@@ -365,9 +365,9 @@ static struct lwip_select_cb *select_cb_list;
 
 /* Forward declaration of some functions */
 #if LWIP_SOCKET_SELECT || LWIP_SOCKET_POLL
-static void event_callback(struct esp_netconn *conn, enum netconn_evt evt, u16_t len);
+// static void event_callback(struct esp_netconn *conn, enum netconn_evt evt, u16_t len);
 #define DEFAULT_SOCKET_EVENTCB event_callback
-static void select_check_waiters(int s, int has_recvevent, int has_sendevent, int has_errevent);
+// static void select_check_waiters(int s, int has_recvevent, int has_sendevent, int has_errevent);
 #else
 #define DEFAULT_SOCKET_EVENTCB NULL
 #endif
@@ -375,8 +375,8 @@ static void select_check_waiters(int s, int has_recvevent, int has_sendevent, in
 static void lwip_getsockopt_callback(void *arg);
 static void lwip_setsockopt_callback(void *arg);
 #endif
-static int lwip_getsockopt_impl(int s, int level, int optname, void *optval, socklen_t *optlen);
-static int lwip_setsockopt_impl(int s, int level, int optname, const void *optval, socklen_t optlen);
+// static int lwip_getsockopt_impl(int s, int level, int optname, void *optval, socklen_t *optlen);
+// static int lwip_setsockopt_impl(int s, int level, int optname, const void *optval, socklen_t optlen);
 static int free_socket_locked(struct lwesp_sock *sock, int is_tcp, struct esp_netconn **conn,
                               union lwesp_sock_lastdata *lastdata);
 static void free_socket_free_elements(int is_tcp, struct esp_netconn *conn, union lwesp_sock_lastdata *lastdata);
@@ -757,6 +757,7 @@ lwesp_accept(int s, struct sockaddr *addr, socklen_t *addrlen)
   SYS_ARCH_UNPROTECT(lev);
 
   // TODO: lwesp netconn does not allow to store callback. Needs external map
+  LWIP_UNUSED_ARG(recvevent);
 /*  if (newconn->callback) {
     LOCK_TCPIP_CORE();
     while (recvevent > 0) {
@@ -1234,6 +1235,7 @@ lwip_recvfrom_udp_raw(struct lwesp_sock *sock, int flags, struct msghdr *msg, u1
         some from the network. */
     
     // TODO: Implement this
+    LWIP_UNUSED_ARG(apiflags);
     //err = esp_netconn_recv_udp_raw_netbuf_flags(sock->conn, &buf, apiflags);
     
     
@@ -1543,6 +1545,7 @@ lwesp_send(int s, const void *data, size_t size, int flags)
   written = size;
    // TODO: write_flags ignored as lwesp does not suport it
    // TODO: written not supported by lwesp, fake to size
+   LWIP_UNUSED_ARG(write_flags);
 
   LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_send(%d) err=%d written=%"SZT_F"\n", s, err, written));
   sock_set_errno(sock, err_to_errno(err));
@@ -1589,6 +1592,7 @@ lwesp_sendmsg(int s, const struct msghdr *msg, int flags)
 
 //     err = esp_netconn_write_vectors_partly(sock->conn, (struct netvector *)msg->msg_iov, (u16_t)msg->msg_iovlen, write_flags, &written);
 // TODO: This one has no counterpart in lwesp needs to be implemented.
+    LWIP_UNUSED_ARG(write_flags);
 
     sock_set_errno(sock, err_to_errno(err));
     done_socket(sock);
@@ -1846,6 +1850,7 @@ lwesp_socket(int domain, int type, int protocol)
 //       conn = esp_netconn_new_with_proto_and_callback(DOMAIN_TO_NETCONN_TYPE(domain, NETCONN_RAW),
 // 					(u8_t)protocol, DEFAULT_SOCKET_EVENTCB);
 //       TODO: Not available in lwesp, needs to be reimplemented
+      return -1;
 
              
       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_socket(%s, SOCK_RAW, %d) = ",
@@ -1857,6 +1862,7 @@ lwesp_socket(int domain, int type, int protocol)
 //                                        ((protocol == IPPROTO_UDPLITE) ? NETCONN_UDPLITE : NETCONN_UDP)),
 //                                        DEFAULT_SOCKET_EVENTCB);
 //       TODO: Not available in lwesp, needs to be reimplemented
+      return -1;
 
       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_socket(%s, SOCK_DGRAM, %d) = ",
                                   domain == PF_INET ? "PF_INET" : "UNKNOWN", protocol));
@@ -2598,139 +2604,139 @@ return_success:
  * Check whether event_callback should wake up a thread waiting in
  * lwip_poll.
  */
-static int
-lwip_poll_should_wake(const struct lwip_select_cb *scb, int fd, int has_recvevent, int has_sendevent, int has_errevent)
-{
-  nfds_t fdi;
-  for (fdi = 0; fdi < scb->poll_nfds; fdi++) {
-    const struct pollfd *pollfd = &scb->poll_fds[fdi];
-    if (pollfd->fd == fd) {
-      /* Do not update pollfd->revents right here;
-         that would be a data race because lwip_pollscan
-         accesses revents without protecting. */
-      if (has_recvevent && (pollfd->events & POLLIN) != 0) {
-        return 1;
-      }
-      if (has_sendevent && (pollfd->events & POLLOUT) != 0) {
-        return 1;
-      }
-      if (has_errevent) {
-        /* POLLERR is output only. */
-        return 1;
-      }
-    }
-  }
-  return 0;
-}
+// static int
+// lwip_poll_should_wake(const struct lwip_select_cb *scb, int fd, int has_recvevent, int has_sendevent, int has_errevent)
+// {
+//   nfds_t fdi;
+//   for (fdi = 0; fdi < scb->poll_nfds; fdi++) {
+//     const struct pollfd *pollfd = &scb->poll_fds[fdi];
+//     if (pollfd->fd == fd) {
+//       /* Do not update pollfd->revents right here;
+//          that would be a data race because lwip_pollscan
+//          accesses revents without protecting. */
+//       if (has_recvevent && (pollfd->events & POLLIN) != 0) {
+//         return 1;
+//       }
+//       if (has_sendevent && (pollfd->events & POLLOUT) != 0) {
+//         return 1;
+//       }
+//       if (has_errevent) {
+//         /* POLLERR is output only. */
+//         return 1;
+//       }
+//     }
+//   }
+//   return 0;
+// }
 #endif /* LWIP_SOCKET_POLL */
 
 #if LWIP_SOCKET_SELECT || LWIP_SOCKET_POLL
-/**
- * Callback registered in the netconn layer for each socket-netconn.
- * Processes recvevent (data available) and wakes up tasks waiting for select.
- *
- * @note for LWIP_TCPIP_CORE_LOCKING any caller of this function
- * must have the core lock held when signaling the following events
- * as they might cause select_list_cb to be checked:
- *   NETCONN_EVT_RCVPLUS
- *   NETCONN_EVT_SENDPLUS
- *   NETCONN_EVT_ERROR
- * This requirement will be asserted in select_check_waiters()
- */
-static void
-event_callback(struct esp_netconn *conn, enum netconn_evt evt, u16_t len)
-{
-  int s, check_waiters;
-  struct lwesp_sock *sock;
-  SYS_ARCH_DECL_PROTECT(lev);
+// /**
+//  * Callback registered in the netconn layer for each socket-netconn.
+//  * Processes recvevent (data available) and wakes up tasks waiting for select.
+//  *
+//  * @note for LWIP_TCPIP_CORE_LOCKING any caller of this function
+//  * must have the core lock held when signaling the following events
+//  * as they might cause select_list_cb to be checked:
+//  *   NETCONN_EVT_RCVPLUS
+//  *   NETCONN_EVT_SENDPLUS
+//  *   NETCONN_EVT_ERROR
+//  * This requirement will be asserted in select_check_waiters()
+//  */
+// static void
+// event_callback(struct esp_netconn *conn, enum netconn_evt evt, u16_t len)
+// {
+//   int s, check_waiters;
+//   struct lwesp_sock *sock;
+//   SYS_ARCH_DECL_PROTECT(lev);
 
-  LWIP_UNUSED_ARG(len);
+//   LWIP_UNUSED_ARG(len);
 
-  /* Get socket */
-  if (conn) {
+//   /* Get socket */
+//   if (conn) {
   
-    s = get_netconn_socket(conn);
+//     s = get_netconn_socket(conn);
     
-    if (s < 0) {
-      /* Data comes in right away after an accept, even though
-       * the server task might not have created a new socket yet.
-       * Just count down (or up) if that's the case and we
-       * will use the data later. Note that only receive events
-       * can happen before the new socket is set up. */
-      SYS_ARCH_PROTECT(lev);
+//     if (s < 0) {
+//       /* Data comes in right away after an accept, even though
+//        * the server task might not have created a new socket yet.
+//        * Just count down (or up) if that's the case and we
+//        * will use the data later. Note that only receive events
+//        * can happen before the new socket is set up. */
+//       SYS_ARCH_PROTECT(lev);
 
-      if (get_netconn_socket(conn) < 0) {
+//       if (get_netconn_socket(conn) < 0) {
 
-        if (evt == NETCONN_EVT_RCVPLUS) {
-          /* conn->socket is -1 on initialization
-             lwip_accept adjusts sock->recvevent if conn->socket < -1 */
+//         if (evt == NETCONN_EVT_RCVPLUS) {
+//           /* conn->socket is -1 on initialization
+//              lwip_accept adjusts sock->recvevent if conn->socket < -1 */
 
-          drop_netconn_socket_mapping(conn);
-          set_netconn_socket_mapping(conn, s - 1);
-        }
-        SYS_ARCH_UNPROTECT(lev);
-        return;
-      }
+//           drop_netconn_socket_mapping(conn);
+//           set_netconn_socket_mapping(conn, s - 1);
+//         }
+//         SYS_ARCH_UNPROTECT(lev);
+//         return;
+//       }
 
-      s = get_netconn_socket(conn);
+//       s = get_netconn_socket(conn);
 
-      SYS_ARCH_UNPROTECT(lev);
-    }
+//       SYS_ARCH_UNPROTECT(lev);
+//     }
 
-    sock = get_socket(s);
-    if (!sock) {
-      return;
-    }
-  } else {
-    return;
-  }
+//     sock = get_socket(s);
+//     if (!sock) {
+//       return;
+//     }
+//   } else {
+//     return;
+//   }
 
-  check_waiters = 1;
-  SYS_ARCH_PROTECT(lev);
-  /* Set event as required */
-  switch (evt) {
-    case NETCONN_EVT_RCVPLUS:
-      sock->rcvevent++;
-      if (sock->rcvevent > 1) {
-        check_waiters = 0;
-      }
-      break;
-    case NETCONN_EVT_RCVMINUS:
-      sock->rcvevent--;
-      check_waiters = 0;
-      break;
-    case NETCONN_EVT_SENDPLUS:
-      if (sock->sendevent) {
-        check_waiters = 0;
-      }
-      sock->sendevent = 1;
-      break;
-    case NETCONN_EVT_SENDMINUS:
-      sock->sendevent = 0;
-      check_waiters = 0;
-      break;
-    case NETCONN_EVT_ERROR:
-      sock->errevent = 1;
-      break;
-    default:
-      LWIP_ASSERT("unknown event", 0);
-      break;
-  }
+//   check_waiters = 1;
+//   SYS_ARCH_PROTECT(lev);
+//   /* Set event as required */
+//   switch (evt) {
+//     case NETCONN_EVT_RCVPLUS:
+//       sock->rcvevent++;
+//       if (sock->rcvevent > 1) {
+//         check_waiters = 0;
+//       }
+//       break;
+//     case NETCONN_EVT_RCVMINUS:
+//       sock->rcvevent--;
+//       check_waiters = 0;
+//       break;
+//     case NETCONN_EVT_SENDPLUS:
+//       if (sock->sendevent) {
+//         check_waiters = 0;
+//       }
+//       sock->sendevent = 1;
+//       break;
+//     case NETCONN_EVT_SENDMINUS:
+//       sock->sendevent = 0;
+//       check_waiters = 0;
+//       break;
+//     case NETCONN_EVT_ERROR:
+//       sock->errevent = 1;
+//       break;
+//     default:
+//       LWIP_ASSERT("unknown event", 0);
+//       break;
+//   }
 
-  if (sock->select_waiting && check_waiters) {
-    /* Save which events are active */
-    int has_recvevent, has_sendevent, has_errevent;
-    has_recvevent = sock->rcvevent > 0;
-    has_sendevent = sock->sendevent != 0;
-    has_errevent = sock->errevent != 0;
-    SYS_ARCH_UNPROTECT(lev);
-    /* Check any select calls waiting on this socket */
-    select_check_waiters(s, has_recvevent, has_sendevent, has_errevent);
-  } else {
-    SYS_ARCH_UNPROTECT(lev);
-  }
-  done_socket(sock);
-}
+//   if (sock->select_waiting && check_waiters) {
+//     /* Save which events are active */
+//     int has_recvevent, has_sendevent, has_errevent;
+//     has_recvevent = sock->rcvevent > 0;
+//     has_sendevent = sock->sendevent != 0;
+//     has_errevent = sock->errevent != 0;
+//     SYS_ARCH_UNPROTECT(lev);
+//     /* Check any select calls waiting on this socket */
+//     select_check_waiters(s, has_recvevent, has_sendevent, has_errevent);
+//   } else {
+//     SYS_ARCH_UNPROTECT(lev);
+//   }
+//   done_socket(sock);
+// }
 
 /**
  * Check if any select waiters are waiting on this socket and its events
@@ -2745,79 +2751,79 @@ event_callback(struct esp_netconn *conn, enum netconn_evt evt, u16_t len)
  * select_cb_list during our UNPROTECT/PROTECT. We use a generational counter to
  * detect this change and restart the list walk. The list is expected to be small
  */
-static void select_check_waiters(int s, int has_recvevent, int has_sendevent, int has_errevent)
-{
-  struct lwip_select_cb *scb;
-#if !LWIP_TCPIP_CORE_LOCKING
-  int last_select_cb_ctr;
-  SYS_ARCH_DECL_PROTECT(lev);
-#endif /* !LWIP_TCPIP_CORE_LOCKING */
+// static void select_check_waiters(int s, int has_recvevent, int has_sendevent, int has_errevent)
+// {
+//   struct lwip_select_cb *scb;
+// #if !LWIP_TCPIP_CORE_LOCKING
+//   int last_select_cb_ctr;
+//   SYS_ARCH_DECL_PROTECT(lev);
+// #endif /* !LWIP_TCPIP_CORE_LOCKING */
 
-  LWIP_ASSERT_CORE_LOCKED();
+//   LWIP_ASSERT_CORE_LOCKED();
 
-#if !LWIP_TCPIP_CORE_LOCKING
-  SYS_ARCH_PROTECT(lev);
-again:
-  /* remember the state of select_cb_list to detect changes */
-  last_select_cb_ctr = select_cb_ctr;
-#endif /* !LWIP_TCPIP_CORE_LOCKING */
-  for (scb = select_cb_list; scb != NULL; scb = scb->next) {
-    if (scb->sem_signalled == 0) {
-      /* semaphore not signalled yet */
-      int do_signal = 0;
-#if LWIP_SOCKET_POLL
-      if (scb->poll_fds != NULL) {
-        do_signal = lwip_poll_should_wake(scb, s, has_recvevent, has_sendevent, has_errevent);
-      }
-#endif /* LWIP_SOCKET_POLL */
-#if LWIP_SOCKET_SELECT && LWIP_SOCKET_POLL
-      else
-#endif /* LWIP_SOCKET_SELECT && LWIP_SOCKET_POLL */
-#if LWIP_SOCKET_SELECT
-      {
-        /* Test this select call for our socket */
-        if (has_recvevent) {
-          if (scb->readset && FD_ISSET(s, scb->readset)) {
-            do_signal = 1;
-          }
-        }
-        if (has_sendevent) {
-          if (!do_signal && scb->writeset && FD_ISSET(s, scb->writeset)) {
-            do_signal = 1;
-          }
-        }
-        if (has_errevent) {
-          if (!do_signal && scb->exceptset && FD_ISSET(s, scb->exceptset)) {
-            do_signal = 1;
-          }
-        }
-      }
-#endif /* LWIP_SOCKET_SELECT */
-      if (do_signal) {
-        scb->sem_signalled = 1;
-        /* For !LWIP_TCPIP_CORE_LOCKING, we don't call SYS_ARCH_UNPROTECT() before signaling
-           the semaphore, as this might lead to the select thread taking itself off the list,
-           invalidating the semaphore. */
-        sys_sem_signal(SELECT_SEM_PTR(scb->sem));
-      }
-    }
-#if LWIP_TCPIP_CORE_LOCKING
-  }
-#else
-    /* unlock interrupts with each step */
-    SYS_ARCH_UNPROTECT(lev);
-    /* this makes sure interrupt protection time is short */
-    SYS_ARCH_PROTECT(lev);
-    if (last_select_cb_ctr != select_cb_ctr) {
-      /* someone has changed select_cb_list, restart at the beginning */
-      goto again;
-    }
-    /* remember the state of select_cb_list to detect changes */
-    last_select_cb_ctr = select_cb_ctr;
-  }
-  SYS_ARCH_UNPROTECT(lev);
-#endif
-}
+// #if !LWIP_TCPIP_CORE_LOCKING
+//   SYS_ARCH_PROTECT(lev);
+// again:
+//   /* remember the state of select_cb_list to detect changes */
+//   last_select_cb_ctr = select_cb_ctr;
+// #endif /* !LWIP_TCPIP_CORE_LOCKING */
+//   for (scb = select_cb_list; scb != NULL; scb = scb->next) {
+//     if (scb->sem_signalled == 0) {
+//       /* semaphore not signalled yet */
+//       int do_signal = 0;
+// #if LWIP_SOCKET_POLL
+//       if (scb->poll_fds != NULL) {
+//         do_signal = lwip_poll_should_wake(scb, s, has_recvevent, has_sendevent, has_errevent);
+//       }
+// #endif /* LWIP_SOCKET_POLL */
+// #if LWIP_SOCKET_SELECT && LWIP_SOCKET_POLL
+//       else
+// #endif /* LWIP_SOCKET_SELECT && LWIP_SOCKET_POLL */
+// #if LWIP_SOCKET_SELECT
+//       {
+//         /* Test this select call for our socket */
+//         if (has_recvevent) {
+//           if (scb->readset && FD_ISSET(s, scb->readset)) {
+//             do_signal = 1;
+//           }
+//         }
+//         if (has_sendevent) {
+//           if (!do_signal && scb->writeset && FD_ISSET(s, scb->writeset)) {
+//             do_signal = 1;
+//           }
+//         }
+//         if (has_errevent) {
+//           if (!do_signal && scb->exceptset && FD_ISSET(s, scb->exceptset)) {
+//             do_signal = 1;
+//           }
+//         }
+//       }
+// #endif /* LWIP_SOCKET_SELECT */
+//       if (do_signal) {
+//         scb->sem_signalled = 1;
+//         /* For !LWIP_TCPIP_CORE_LOCKING, we don't call SYS_ARCH_UNPROTECT() before signaling
+//            the semaphore, as this might lead to the select thread taking itself off the list,
+//            invalidating the semaphore. */
+//         sys_sem_signal(SELECT_SEM_PTR(scb->sem));
+//       }
+//     }
+// #if LWIP_TCPIP_CORE_LOCKING
+//   }
+// #else
+//     /* unlock interrupts with each step */
+//     SYS_ARCH_UNPROTECT(lev);
+//     /* this makes sure interrupt protection time is short */
+//     SYS_ARCH_PROTECT(lev);
+//     if (last_select_cb_ctr != select_cb_ctr) {
+//       /* someone has changed select_cb_list, restart at the beginning */
+//       goto again;
+//     }
+//     /* remember the state of select_cb_list to detect changes */
+//     last_select_cb_ctr = select_cb_ctr;
+//   }
+//   SYS_ARCH_UNPROTECT(lev);
+// #endif
+// }
 #endif /* LWIP_SOCKET_SELECT || LWIP_SOCKET_POLL */
 
 /**
@@ -2837,9 +2843,7 @@ lwesp_shutdown(int s, int how)
     return -1;
   }
 
-  if (/*sock->conn != NULL*/ 1) {
-  // TODO: lwesp conn has not socket member, needs to be handled by external map
-  
+  if (sock->conn != NULL) {
     if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) != ESP_CONN_TYPE_TCP) {
       sock_set_errno(sock, EOPNOTSUPP);
       done_socket(sock);
@@ -2863,7 +2867,11 @@ lwesp_shutdown(int s, int how)
     done_socket(sock);
     return -1;
   }
+
+// TODO: There is no direct counterpart in lwesp
 //   err = esp_netconn_shutdown(sock->conn, shut_rx, shut_tx);
+  LWIP_UNUSED_ARG(shut_rx);
+  LWIP_UNUSED_ARG(shut_tx);
   err = esp_netconn_close(sock->conn); // TODO: is this ok
 
   sock_set_errno(sock, err_to_errno(err));

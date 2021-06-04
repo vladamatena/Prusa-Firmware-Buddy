@@ -98,7 +98,7 @@ lwesp_netbuf_delete(struct lwesp_netbuf *buf)
  * @return pointer to the allocated memory
  *         NULL if no memory could be allocated
  */
-void *
+const void *
 lwesp_netbuf_alloc(struct lwesp_netbuf *buf, u16_t size)
 {
   LWIP_ERROR("netbuf_alloc: invalid buf", (buf != NULL), return NULL;);
@@ -109,16 +109,16 @@ lwesp_netbuf_alloc(struct lwesp_netbuf *buf, u16_t size)
   }
 
 //   buf->p = lwesp_pbuf_alloc(PBUF_TRANSPORT, size, PBUF_RAM);
-//   TODO: THis is not a direct equivalent
-  buf->p = lwesp_pbuf_new(size);
+//   TODO: This is not a direct equivalent
+  buf->p = esp_pbuf_new(size);
   
   if (buf->p == NULL) {
     return NULL;
   }
   LWIP_ASSERT("check that first pbuf can hold size",
-              (lwesp_pbuf_length(buf->p, 0) >= size));
+              (esp_pbuf_length(buf->p, 0) >= size));
   buf->ptr = buf->p;
-  return lwesp_pbuf_data(buf->p);
+  return esp_pbuf_data(buf->p);
 }
 
 /**
@@ -191,7 +191,7 @@ lwesp_netbuf_chain(struct lwesp_netbuf *head, struct lwesp_netbuf *tail)
 {
   LWIP_ERROR("netbuf_chain: invalid head", (head != NULL), return;);
   LWIP_ERROR("netbuf_chain: invalid tail", (tail != NULL), return;);
-  lwesp_pbuf_cat(head->p, tail->p);
+  esp_pbuf_cat(head->p, tail->p);
   head->ptr = head->p;
   memp_free(MEMP_NETBUF, tail);
 }
@@ -207,7 +207,7 @@ lwesp_netbuf_chain(struct lwesp_netbuf *head, struct lwesp_netbuf *tail)
  *         ERR_BUF on error.
  */
 err_t
-lwesp_netbuf_data(struct lwesp_netbuf *buf, void **dataptr, u16_t *len)
+lwesp_netbuf_data(struct lwesp_netbuf *buf, const void **dataptr, u16_t *len)
 {
   LWIP_ERROR("netbuf_data: invalid buf", (buf != NULL), return ERR_ARG;);
   LWIP_ERROR("netbuf_data: invalid dataptr", (dataptr != NULL), return ERR_ARG;);
@@ -216,8 +216,8 @@ lwesp_netbuf_data(struct lwesp_netbuf *buf, void **dataptr, u16_t *len)
   if (buf->ptr == NULL) {
     return ERR_BUF;
   }
-  *dataptr = lwesp_pbuf_data(buf->ptr);
-  *len = lwesp_pbuf_length(buf->ptr, 0);
+  *dataptr = esp_pbuf_data(buf->ptr);
+  *len = esp_pbuf_length(buf->ptr, 0);
   return ERR_OK;
 }
 
