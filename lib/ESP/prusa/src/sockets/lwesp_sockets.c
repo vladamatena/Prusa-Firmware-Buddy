@@ -728,10 +728,6 @@ lwesp_accept(int s, struct sockaddr *addr, socklen_t *addrlen)
    */
   SYS_ARCH_PROTECT(lev);
 
-// lwesp netconn does not allow to store socket. Needs external map
-//   recvevent = (s16_t)(-1 - newconn->socket);
-//   newconn->socket = newsock;
-// TODO: is this ok
   recvevent = (s16_t)(-1 - get_netconn_socket(newconn));
   set_netconn_socket_mapping(newconn, newsock);
 
@@ -1880,9 +1876,7 @@ lwesp_socket(int domain, int type, int protocol)
     return -1;
   }
 
-//   conn->socket = i;
-//   TODO: lwesp conn does not hold socket, neet to handled by external map
-
+  set_netconn_socket_mapping(conn, i);
 
   done_socket(&sockets[i - LWIP_SOCKET_OFFSET]);
   LWIP_DEBUGF(SOCKETS_DEBUG, ("%d\n", i));
@@ -2633,8 +2627,7 @@ event_callback(struct esp_netconn *conn, enum netconn_evt evt, u16_t len)
   /* Get socket */
   if (conn) {
   
-//     s = conn->socket;
-// TODO: lwesp conn has not socket member, needs to be handled by external map
+    s = get_netconn_socket(conn);
     
     if (s < 0) {
       /* Data comes in right away after an accept, even though
@@ -2644,25 +2637,20 @@ event_callback(struct esp_netconn *conn, enum netconn_evt evt, u16_t len)
        * can happen before the new socket is set up. */
       SYS_ARCH_PROTECT(lev);
 
-      if (/*conn->socket < 0*/ 0) {
-// TODO: lwesp conn has not socket member, needs to be handled by external map
-
+      if (get_netconn_socket(conn) < 0) {
 
         if (evt == NETCONN_EVT_RCVPLUS) {
           /* conn->socket is -1 on initialization
              lwip_accept adjusts sock->recvevent if conn->socket < -1 */
 
-//           conn->socket--;
-// TODO: lwesp conn has not socket member, needs to be handled by external map
-          
-          
+          drop_netconn_socket_mapping(conn);
+          set_netconn_socket_mapping(conn, s - 1);
         }
         SYS_ARCH_UNPROTECT(lev);
         return;
       }
 
-//       s = conn->socket;
-// TODO: lwesp conn has not socket member, needs to be handled by external map
+      s = get_netconn_socket(conn);
 
       SYS_ARCH_UNPROTECT(lev);
     }
