@@ -46,7 +46,6 @@
 #include "esp.h"
 #include "esp/esp_netconn.h"
 
-#include "lwip/sockets.h"
 #include "sockets/lwesp_sockets_priv.h"
 #include "lwip/api.h"
 #include "lwip/igmp.h"
@@ -55,7 +54,6 @@
 #include "lwip/raw.h"
 #include "lwip/udp.h"
 #include "lwip/memp.h"
-// #include "lwip/pbuf.h"
 #include "lwip/netif.h"
 #include "lwip/priv/tcpip_priv.h"
 #include "lwip/mld6.h"
@@ -290,6 +288,31 @@ static void drop_netconn_socket_mapping(esp_netconn_t *conn) {
 
 
 
+
+static size_t esp_pbuf_copy_partial(const struct esp_pbuf *buf, void *dataptr, size_t len, size_t offset) {
+  void *dst = dataptr;
+
+  for (const struct esp_pbuf *p = buf; len != 0 && p != NULL; p = p->next) {
+    // Skip buffer because of the offset
+    if ((offset != 0) && (offset >= p->len)) {
+    offset = offset - p->len;
+    continue;
+    }
+
+    // Compute how many bytes to copy
+    size_t n = p->len - offset;
+    if (n > len) {
+      n = len;
+    }
+
+    // Copy data
+    memcpy(dst, p->payload, n);
+    dst += n;
+    len -= n;
+    offset = 0;
+  }
+  return dst - dataptr;
+}
 
 
 
@@ -1068,8 +1091,7 @@ lwip_recv_tcp(struct lwesp_sock *sock, void *mem, size_t len, int flags)
     /* copy the contents of the received buffer into
     the supplied memory pointer mem */
     
-//     pbuf_copy_partial(p, (u8_t *)mem + recvd, copylen, 0);
-    esp_pbuf_copy(p, (u8_t *)mem + recvd, copylen, 0); // TODO: Check this is ok
+    esp_pbuf_copy_partial(p, (u8_t *)mem + recvd, copylen, 0);
 
     recvd += copylen;
 
@@ -1239,7 +1261,7 @@ lwip_recvfrom_udp_raw(struct lwesp_sock *sock, int flags, struct msghdr *msg, u1
 
     /* copy the contents of the received buffer into
         the supplied memory buffer */
-    pbuf_copy_partial(buf->p, (u8_t *)msg->msg_iov[i].iov_base, copylen, copied);
+    esp_pbuf_copy_partial(buf->p, (u8_t *)msg->msg_iov[i].iov_base, copylen, copied);
     copied = (u16_t)(copied + copylen);
   }
 
