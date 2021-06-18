@@ -1406,7 +1406,7 @@ lwesp_readv(int s, const struct iovec *iov, int iovcnt)
 ssize_t
 lwesp_recv(int s, void *mem, size_t len, int flags)
 {
-  return lwip_recvfrom(s, mem, len, flags, NULL, NULL);
+  return lwesp_recvfrom(s, mem, len, flags, NULL, NULL);
 }
 
 ssize_t
@@ -1545,9 +1545,9 @@ lwesp_send(int s, const void *data, size_t size, int flags)
   // err = esp_netconn_write_partly(sock->conn, data, size, write_flags, &written);
   err = esp_netconn_write(sock->conn, data, size);
   written = size;
-   // TODO: write_flags ignored as lwesp does not suport it
-   // TODO: written not supported by lwesp, fake to size
-   LWIP_UNUSED_ARG(write_flags);
+  // TODO: write_flags ignored as lwesp does not suport it
+  // TODO: written not supported by lwesp, fake to size
+  LWIP_UNUSED_ARG(write_flags);
 
   LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_send(%d) err=%d written=%"SZT_F"\n", s, err, written));
   sock_set_errno(sock, err_to_errno(err));
@@ -1742,7 +1742,7 @@ lwesp_sendto(int s, const void *data, size_t size, int flags,
   err_t err;
   u16_t short_size;
   u16_t remote_port;
-  struct netbuf buf;
+  struct lwesp_netbuf buf;
 
   sock = get_socket(s);
   if (!sock) {
@@ -1752,7 +1752,7 @@ lwesp_sendto(int s, const void *data, size_t size, int flags,
   if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == ESP_CONN_TYPE_TCP) {
 #if LWIP_TCP
     done_socket(sock);
-    return lwip_send(s, data, size, flags);
+    return lwesp_send(s, data, size, flags);
 #else /* LWIP_TCP */
     LWIP_UNUSED_ARG(flags);
     sock_set_errno(sock, err_to_errno(ERR_ARG));
@@ -1811,7 +1811,7 @@ lwesp_sendto(int s, const void *data, size_t size, int flags,
     err = ERR_OK;
   }
 #else /* LWIP_NETIF_TX_SINGLE_PBUF */
-  err = netbuf_ref(&buf, data, short_size);
+  err = lwesp_netbuf_ref(&buf, data, short_size);
 #endif /* LWIP_NETIF_TX_SINGLE_PBUF */
   if (err == ERR_OK) {
 #if LWIP_IPV4 && LWIP_IPV6
@@ -1824,13 +1824,15 @@ lwesp_sendto(int s, const void *data, size_t size, int flags,
 
     /* send the data */
 
-//     err = esp_netconn_send(sock->conn, &buf);
-// TODO: Needs to implement sending netbuf data
-
+    // TODO: Needs to implement sending netbuf data, is this ok?
+    const void *dtw;
+    u16_t btw;
+    lwesp_netbuf_data(&buf, &dtw, &btw);
+    err = esp_netconn_send(sock->conn, dtw, btw);
   }
 
   /* deallocated the buffer */
-  netbuf_free(&buf);
+  lwesp_netbuf_delete(&buf);
 
   sock_set_errno(sock, err_to_errno(err));
   done_socket(sock);
@@ -1864,6 +1866,7 @@ lwesp_socket(int domain, int type, int protocol)
 //                                        ((protocol == IPPROTO_UDPLITE) ? NETCONN_UDPLITE : NETCONN_UDP)),
 //                                        DEFAULT_SOCKET_EVENTCB);
 //       TODO: Not available in lwesp, needs to be reimplemented
+      conn = esp_netconn_new(ESP_NETCONN_TYPE_UDP);
       return -1;
 
       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_socket(%s, SOCK_DGRAM, %d) = ",
