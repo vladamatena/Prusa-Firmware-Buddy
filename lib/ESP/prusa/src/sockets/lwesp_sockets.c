@@ -269,6 +269,17 @@ static int get_netconn_socket(esp_netconn_t *conn) {
 	return -1;
 }
 
+/* NOT USED YET
+static esp_netconn_t* get_socket_netconn(int socket) {
+	for(uint i = 0; i < NETCONN_SOCKET_MAPPING_MAX; i++) {
+		if(netconn_socket_mapping[i].socket == socket) {
+			return netconn_socket_mapping[i].conn;
+		}
+	}
+	return NULL;
+}
+*/
+
 static void set_netconn_socket_mapping(esp_netconn_t *conn, int socket) {
 	for(uint i = 0; i < NETCONN_SOCKET_MAPPING_MAX; i++) {
 		if(netconn_socket_mapping[i].conn == NULL) {
@@ -1236,9 +1247,10 @@ lwip_recvfrom_udp_raw(struct lwesp_sock *sock, int flags, struct msghdr *msg, u1
     /* No data was left from the previous operation, so we try to get
         some from the network. */
     
-    // TODO: Implement this
+    // TODO: Apiflags ignored, not supported by lwesp
     LWIP_UNUSED_ARG(apiflags);
     //err = esp_netconn_recv_udp_raw_netbuf_flags(sock->conn, &buf, apiflags);
+    err = esp_netconn_receive(sock->conn, &buf->ptr)
     
     
     LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_recvfrom_udp_raw[UDP/RAW]: netconn_recv err=%d, netbuf=%p\n",
@@ -1340,7 +1352,7 @@ lwesp_recvfrom(int s, void *mem, size_t len, int flags,
     return -1;
   }
 #if LWIP_TCP
-  if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == ESP_CONN_TYPE_TCP) {
+  if (netconn_type(sock->conn) == ESP_NETCONN_TYPE_TCP) {
     ret = lwip_recv_tcp(sock, mem, len, flags);
     lwip_recv_tcp_from(sock, from, fromlen, "lwip_recvfrom", s, ret);
     done_socket(sock);
@@ -1749,7 +1761,7 @@ lwesp_sendto(int s, const void *data, size_t size, int flags,
     return -1;
   }
 
-  if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) == ESP_CONN_TYPE_TCP) {
+  if (netconn_type(sock->conn) == ESP_NETCONN_TYPE_TCP) {
 #if LWIP_TCP
     done_socket(sock);
     return lwesp_send(s, data, size, flags);
@@ -1785,7 +1797,7 @@ lwesp_sendto(int s, const void *data, size_t size, int flags,
     remote_port = 0;
     ip_addr_set_any(NETCONNTYPE_ISIPV6(netconn_type(sock->conn)), &buf.addr);
   }
-  netbuf_fromport(&buf) = remote_port;
+  lwesp_netbuf_fromport(&buf) = remote_port;
 
 
   LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_sendto(%d, data=%p, short_size=%"U16_F", flags=0x%x to=",
@@ -1828,7 +1840,8 @@ lwesp_sendto(int s, const void *data, size_t size, int flags,
     const void *dtw;
     u16_t btw;
     lwesp_netbuf_data(&buf, &dtw, &btw);
-    err = esp_netconn_send(sock->conn, dtw, btw);
+    const esp_ip_t espip = esp_ip_from_ip_addr(buf.addr);
+    err = esp_netconn_sendto(sock->conn, &espip, buf.port, dtw, btw);
   }
 
   /* deallocated the buffer */
@@ -1867,7 +1880,6 @@ lwesp_socket(int domain, int type, int protocol)
 //                                        DEFAULT_SOCKET_EVENTCB);
 //       TODO: Not available in lwesp, needs to be reimplemented
       conn = esp_netconn_new(ESP_NETCONN_TYPE_UDP);
-      return -1;
 
       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_socket(%s, SOCK_DGRAM, %d) = ",
                                   domain == PF_INET ? "PF_INET" : "UNKNOWN", protocol));
@@ -2910,7 +2922,7 @@ lwip_getaddrname(int s, struct sockaddr *name, socklen_t *namelen, u8_t local)
   } else {
     esp_conn_get_remote_ip(sock->conn->conn, &espip);
     // TODO: macro for proper IP composition?
-    naddr.addr = espip.ip[0] | espip.ip[1] << 8 | espip.ip[2] << 16 | espip.ip[3] << 24;
+    naddr.addr = addr_from_esp_ip(espip);
   }
   
   
