@@ -241,6 +241,95 @@ void socket_listen_test_lwesp() {
     _dbg("CONNECTION CLOSED\n");
 }
 
+void socket_udp_client_test_lwesp() {
+    _dbg("LWESP UDP HELLO TEST\n");
+    int sockfd = lwesp_socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd == -1) {
+        _dbg("FAILED TO CREATE LISTENING SOCKET\n");
+        return;
+    }
+    _dbg("SOCKET CREATED\n");
+
+    struct sockaddr_in servaddr;
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr("10.42.0.1");
+    servaddr.sin_port = htons(5000);
+
+    int conres = lwesp_connect(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr));
+    if(conres != 0) {
+        _dbg("CONNECT RETURNED: %d\n", conres);
+    }
+  
+    for(;;) {
+        static const size_t BUF_SIZE = 20;
+        char buff[20] = "Hello world12345678";
+
+        int send = lwesp_sendto(sockfd, buff, BUF_SIZE, 0, (const struct sockaddr *)&servaddr, sizeof(servaddr));
+        if (send < 0) {
+            _dbg("SENDTO FAILED: %d\n", send);
+        }
+    }
+  
+    lwesp_close(sockfd);
+
+    _dbg("CONNECTION CLOSED\n");
+}
+
+void socket_udp_server_test_lwesp() {
+    _dbg("LWESP UDP SERVER TEST\n");
+    int sockfd = lwesp_socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd == -1) {
+        _dbg("FAILED TO CREATE LISTENING SOCKET\n");
+        return;
+    }
+    _dbg("SOCKET CREATED\n");
+
+    struct sockaddr_in servaddr, otheraddr;
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_port = htons(5000);
+
+    bzero(&otheraddr, sizeof(otheraddr));
+  
+  
+    if ((lwesp_bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr))) != 0) {
+        _dbg("BIND FAILED\n");
+        return;
+    }
+    
+    _dbg("SOCKET BOUND\n");
+  
+    
+    for(;;) {
+        static const size_t BUF_SIZE = 20;
+        char buff[20];
+
+        socklen_t len = 0;
+        //int recvd = lwesp_recvfrom(sockfd, buff, BUF_SIZE, 0, (struct sockaddr *)&otheraddr, &len);
+        int recvd = lwesp_recv(sockfd, buff, BUF_SIZE, 0);
+        if (recvd < 0) {
+            _dbg("RECVFROM FAILED\n");
+        }
+
+
+        _dbg("Received: %d bytes", recvd);
+        _dbg("Received client addr len: %d bytes", len);
+        _dbg("Received: %s", buff);
+
+        int send = lwesp_sendto(sockfd, buff, recvd, 0, (const struct sockaddr *)&otheraddr, sizeof(otheraddr));
+        if (send < 0) {
+            _dbg("SENDTO FAILED: %d\n", send);
+        }
+    }
+  
+    // After chatting close the socket
+    lwesp_close(sockfd);
+
+    _dbg("CONNECTION CLOSED\n");
+}
+
 void netconn_listen_test() {
     uint32_t res;
     esp_netconn_p server, client;
@@ -447,6 +536,8 @@ void StartWebServerTask(void const *argument) {
         //esp_sys_thread_create(NULL, "netconn_client", (esp_sys_thread_fn)netconn_client_thread, NULL, 512, ESP_SYS_THREAD_PRIO);
 
         //netconn_client_test();
+        socket_udp_client_test_lwesp();
+        socket_udp_server_test_lwesp();
         socket_connect_test_lwesp();
         socket_listen_test_lwesp();
 
