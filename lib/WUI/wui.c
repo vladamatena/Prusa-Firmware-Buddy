@@ -245,7 +245,7 @@ void socket_udp_client_test_lwesp() {
     _dbg("LWESP UDP HELLO TEST\n");
     int sockfd = lwesp_socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd == -1) {
-        _dbg("FAILED TO CREATE LISTENING SOCKET\n");
+        _dbg("FAILED TO CREATE SOCKET\n");
         return;
     }
     _dbg("SOCKET CREATED\n");
@@ -263,11 +263,23 @@ void socket_udp_client_test_lwesp() {
   
     for(;;) {
         static const size_t BUF_SIZE = 20;
-        char buff[20] = "Hello world12345678";
+        char buff[20] = "Hello world 1234567\n";
 
         int send = lwesp_sendto(sockfd, buff, BUF_SIZE, 0, (const struct sockaddr *)&servaddr, sizeof(servaddr));
         if (send < 0) {
             _dbg("SENDTO FAILED: %d\n", send);
+        }
+
+        _dbg("RECIEVE");
+        struct sockaddr fromaddr;
+        socklen_t fromlen;
+        int recvd = lwesp_recvfrom(sockfd, buff, BUF_SIZE, 0, &fromaddr, &fromlen);
+        if(recvd < 0) {
+            _dbg("RECV FAILED: %d", recvd);
+        } else {
+            buff[recvd] = 0;
+            _dbg("RECEIVED: %d bytes", recvd);
+            _dbg("RECEIVED: %s", buff);
         }
     }
   
@@ -280,7 +292,7 @@ void socket_udp_server_test_lwesp() {
     _dbg("LWESP UDP SERVER TEST\n");
     int sockfd = lwesp_socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd == -1) {
-        _dbg("FAILED TO CREATE LISTENING SOCKET\n");
+        _dbg("FAILED TO CREATE SOCKET\n");
         return;
     }
     _dbg("SOCKET CREATED\n");
@@ -537,9 +549,9 @@ void StartWebServerTask(void const *argument) {
 
         //netconn_client_test();
         socket_udp_client_test_lwesp();
-        socket_udp_server_test_lwesp();
-        socket_connect_test_lwesp();
-        socket_listen_test_lwesp();
+        //socket_udp_server_test_lwesp();
+        //socket_connect_test_lwesp();
+        //socket_listen_test_lwesp();
 
     } else {
         _dbg("AP connect FAILED");
