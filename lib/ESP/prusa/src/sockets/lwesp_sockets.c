@@ -1250,7 +1250,8 @@ lwip_recvfrom_udp_raw(struct lwesp_sock *sock, int flags, struct msghdr *msg, u1
     // TODO: Apiflags ignored, not supported by lwesp
     LWIP_UNUSED_ARG(apiflags);
     //err = esp_netconn_recv_udp_raw_netbuf_flags(sock->conn, &buf, apiflags);
-    err = esp_netconn_receive(sock->conn, &buf->ptr)
+    buf = lwesp_netbuf_new();
+    err = esp_netconn_receive(sock->conn, &buf->p);
     
     
     LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_recvfrom_udp_raw[UDP/RAW]: netconn_recv err=%d, netbuf=%p\n",
@@ -1845,7 +1846,7 @@ lwesp_sendto(int s, const void *data, size_t size, int flags,
   }
 
   /* deallocated the buffer */
-  lwesp_netbuf_delete(&buf);
+  lwesp_netbuf_free(&buf);
 
   sock_set_errno(sock, err_to_errno(err));
   done_socket(sock);

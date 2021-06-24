@@ -49,7 +49,7 @@
 #if LWIP_NETCONN /* don't build if not configured for use in lwipopts.h */
 
 #include "sockets/lwesp_netbuf.h"
-#include "lwip/memp.h"
+//#include "lwip/memp.h"
 #include "esp/esp_private.h"
 
 #include <string.h>
@@ -67,7 +67,10 @@ lwesp_netbuf *lwesp_netbuf_new(void)
 {
   struct lwesp_netbuf *buf;
 
-  buf = (struct lwesp_netbuf *)memp_malloc(MEMP_NETBUF);
+  //buf = (struct lwesp_netbuf *)memp_malloc(MEMP_NETBUF);
+  // TODO: fix mempool allocation
+  buf = (struct lwesp_netbuf *)malloc(sizeof(struct lwesp_netbuf));
+
   if (buf != NULL) {
     memset(buf, 0, sizeof(struct lwesp_netbuf));
   }
@@ -88,7 +91,9 @@ lwesp_netbuf_delete(struct lwesp_netbuf *buf)
       esp_pbuf_free(buf->p);
       buf->p = buf->ptr = NULL;
     }
-    memp_free(MEMP_NETBUF, buf);
+    // TODO: Free buffer
+    //memp_free(MEMP_NETBUF, buf);
+    free(buf);
   }
 }
 
@@ -193,7 +198,8 @@ lwesp_netbuf_chain(struct lwesp_netbuf *head, struct lwesp_netbuf *tail)
   LWIP_ERROR("netbuf_chain: invalid tail", (tail != NULL), return;);
   esp_pbuf_cat(head->p, tail->p);
   head->ptr = head->p;
-  memp_free(MEMP_NETBUF, tail);
+  //memp_free(MEMP_NETBUF, tail);
+  free(tail);
 }
 
 /**
