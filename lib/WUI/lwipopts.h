@@ -121,15 +121,15 @@ extern "C" {
     /*----- Value in opt.h for LWIP_STATS: 1 -----*/
     #define LWIP_STATS 0
     /*----- Value in opt.h for CHECKSUM_GEN_IP: 1 -----*/
-    #define CHECKSUM_GEN_IP 0
+    #define CHECKSUM_GEN_IP 1
     /*----- Value in opt.h for CHECKSUM_GEN_UDP: 1 -----*/
-    #define CHECKSUM_GEN_UDP 0
+    #define CHECKSUM_GEN_UDP 1
     /*----- Value in opt.h for CHECKSUM_GEN_TCP: 1 -----*/
-    #define CHECKSUM_GEN_TCP 0
+    #define CHECKSUM_GEN_TCP 1
     /*----- Value in opt.h for CHECKSUM_GEN_ICMP: 1 -----*/
-    #define CHECKSUM_GEN_ICMP 0
+    #define CHECKSUM_GEN_ICMP 1
     /*----- Value in opt.h for CHECKSUM_GEN_ICMP6: 1 -----*/
-    #define CHECKSUM_GEN_ICMP6 0
+    #define CHECKSUM_GEN_ICMP6 1
     /*----- Value in opt.h for CHECKSUM_CHECK_IP: 1 -----*/
     #define CHECKSUM_CHECK_IP 0
     /*----- Value in opt.h for CHECKSUM_CHECK_UDP: 1 -----*/
