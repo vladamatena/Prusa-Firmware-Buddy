@@ -194,7 +194,6 @@ void USART2_IRQHandler() {
 }
 #ifdef USE_ESP01_WITH_UART6
 void USART6_IRQHandler(void) {
-
     if (__HAL_UART_GET_FLAG(&huart6, UART_FLAG_IDLE)) {
         __HAL_UART_CLEAR_IDLEFLAG(&huart6);
         esp_receive_data(&huart6);

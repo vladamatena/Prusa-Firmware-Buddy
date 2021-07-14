@@ -190,6 +190,61 @@ char uart6slave_line[32];
 static volatile uint32_t minda_falling_edges = 0;
 uint32_t get_Z_probe_endstop_hits() { return minda_falling_edges; }
 
+
+
+
+#define RX_BUFFER_LEN 0x500
+
+uint8_t dma_buffer_rx[RX_BUFFER_LEN];
+
+static void uecho(uint8_t *data, size_t len) {
+    _dbg("Received UART DMA DATA: %.*s", len, data);
+    HAL_UART_Transmit(&huart6, data, len, 10);
+}
+
+static void uart_echo_body(const void *data) {
+    _dbg("uart_echo_body STARTED");
+    HAL_UART_Transmit(&huart6, (uint8_t*)"ECHO STARTED\n", 13, 10);
+
+    /////////////////////////// NON - DMA ECHO
+/*    while(1) {
+        uint8_t c;
+        int rcvd = HAL_UART_Receive(&huart6, &c, 1, 20);
+        if(rcvd == HAL_OK) {
+            _dbg("Received: %c", rcvd, c);
+            HAL_UART_Transmit(&huart6, &c, 1, 10);
+        }
+    }*/
+
+    //////////////////////////// DMA ECHO
+    if (HAL_UART_Receive_DMA(&huart6, (uint8_t *)dma_buffer_rx, RX_BUFFER_LEN) != HAL_OK) {
+        Error_Handler();
+    }
+
+    size_t old_pos = 0;
+    size_t pos = 0;
+
+    while(1) {
+        /* Read data */
+        uint32_t dma_bytes_left = __HAL_DMA_GET_COUNTER(huart6.hdmarx); // no. of bytes left for buffer full
+        pos = sizeof(dma_buffer_rx) - dma_bytes_left;
+        if (pos != old_pos) {
+            if (pos > old_pos) {
+                uecho(&dma_buffer_rx[old_pos], pos - old_pos);
+            } else {
+                uecho(&dma_buffer_rx[old_pos], sizeof(dma_buffer_rx) - old_pos);
+                if (pos > 0) {
+                    uecho(&dma_buffer_rx[0], pos);
+                }
+            }
+            old_pos = pos;
+            if (old_pos == sizeof(dma_buffer_rx)) {
+                old_pos = 0;
+            }
+        }
+    }
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -295,38 +350,14 @@ int main(void) {
         NULL
     };
     metric_system_init(handlers);
-    /* USER CODE BEGIN RTOS_MUTEX */
-    /* add mutexes, ... */
-    /* USER CODE END RTOS_MUTEX */
-
-    /* USER CODE BEGIN RTOS_SEMAPHORES */
-    /* add semaphores, ... */
-    /* USER CODE END RTOS_SEMAPHORES */
-
-    /* USER CODE BEGIN RTOS_TIMERS */
-    /* start timers, add new ones, ... */
-    /* USER CODE END RTOS_TIMERS */
 
     /* Create the thread(s) */
     /* definition and creation of defaultTask */
     osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 1024);
     defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
-    /* definition and creation of displayTask */
-    osThreadDef(displayTask, StartDisplayTask, osPriorityNormal, 0, 2048);
-    displayTaskHandle = osThreadCreate(osThread(displayTask), NULL);
-
-#ifdef BUDDY_ENABLE_WUI
-    /* definition and creation of webServerTask */
-    osThreadDef(webServerTask, StartWebServerTask, osPriorityNormal, 0, BUDDY_WEB_STACK_SIZE);
-    webServerTaskHandle = osThreadCreate(osThread(webServerTask), NULL);
-#endif
-
-    /* USER CODE BEGIN RTOS_THREADS */
-    /* add threads, ... */
-    /* definition and creation of measurementTask */
-    osThreadDef(measurementTask, StartMeasurementTask, osPriorityNormal, 0, 512);
-    osThreadCreate(osThread(measurementTask), NULL);
+    osThreadDef(uartEchoTask, uart_echo_body, osPriorityNormal, 0, 2048);
+    osThreadCreate(osThread(uartEchoTask), NULL);
 
     /* USER CODE END RTOS_THREADS */
 
