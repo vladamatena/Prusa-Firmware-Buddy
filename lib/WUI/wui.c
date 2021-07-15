@@ -84,8 +84,24 @@ static void update_eth_changes(void) {
 
 extern void netconn_client_thread(void const *arg);
 
+static void esp_altcp_task(void const *arg) {
+    _dbg("ESP ALT tcp task running");
+    while(1) {
+        for(struct esp_con_reg_rec *rec = esp_con_registry; rec != NULL; rec = rec->next) {
+            _dbg("ESP ALT Thread processing %d", rec);
+            if(rec->pcb->accept) {
+                _dbg("Connection want to accept");
+                esp_netconn_p client;
+                espr_t err = esp_netconn_accept(rec->pcb->state, &client);
+                rec->pcb->accept(rec->pcb, client, 0);
+            }
+        }
+
+    }
+}
+
 void StartWebServerTask(void const *argument) {
-    ap_entry_t ap = { "ssid", "password" };
+    ap_entry_t ap = { "esptest", "lwesp8266" };
     uint32_t res;
 
     // get settings from ini file
@@ -117,8 +133,11 @@ void StartWebServerTask(void const *argument) {
     if (!esp_connect_to_AP(&ap)) {
 
         _dbg("LwESP connect to AP %s!", ap.ssid);
-        esp_http_server_init(NULL, 80);
+        //esp_http_server_init(NULL, 80);
         // esp_sys_thread_create(NULL, "netconn_client", (esp_sys_thread_fn)netconn_client_thread, NULL, 512, ESP_SYS_THREAD_PRIO);
+        httpd_init();
+        osThreadDef(ESPALTCP, esp_altcp_task, osPriorityNormal, 0, 512);
+        osThreadCreate(osThread(ESPALTCP), NULL);
     }
 
     for (;;) {
@@ -129,10 +148,11 @@ void StartWebServerTask(void const *argument) {
     }
 }
 
+
+
 struct altcp_pcb *prusa_alloc(void *arg, uint8_t ip_type) {
     if (netif_status == WUI_ETH_NETIF_UP)
         return altcp_tcp_new_ip_type(ip_type);
     else
-        return NULL;
-    // return altcp_esp_new_ip_type(ip_type);
+        return altcp_esp_new_ip_type(ip_type);
 }

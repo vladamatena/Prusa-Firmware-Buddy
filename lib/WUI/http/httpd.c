@@ -2528,8 +2528,9 @@ http_accept(void *arg, struct altcp_pcb *pcb, err_t err) {
 static void
 httpd_init_pcb(struct altcp_pcb *pcb, u16_t port) {
     err_t err;
-
+    _dbg("httpd_init_pcb");
     if (pcb) {
+        _dbg("httpd_init_pcb - pcb valid");
         altcp_setprio(pcb, HTTPD_TCP_PRIO);
         /* set SOF_REUSEADDR here to explicitly bind httpd to multiple interfaces */
         err = altcp_bind(pcb, IP_ANY_TYPE, port);

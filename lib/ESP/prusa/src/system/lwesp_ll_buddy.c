@@ -69,7 +69,7 @@ void StartUartBufferThread(void const *arg) {
 
     while (1) {
         /* Wait for the event message from DMA or USART */
-        osMessageGet(uartBufferMbox_id, osWaitForever);
+    //    osMessageGet(uartBufferMbox_id, osWaitForever);
 
         /* Read data */
         uint32_t dma_bytes_left = __HAL_DMA_GET_COUNTER(huart6.hdmarx); // no. of bytes left for buffer full

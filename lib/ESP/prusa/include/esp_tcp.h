@@ -60,6 +60,18 @@ struct altcp_pcb *altcp_esp_new_ip_type(u8_t ip_type);
 
 struct altcp_pcb *altcp_esp_alloc(void *arg, u8_t ip_type);
 
+struct esp_native_con {
+    esp_netconn_p netconn;
+    void *native_accept_fn;
+}
+
+struct esp_con_reg_rec {
+    struct altcp_pcb *pcb;
+    struct esp_con_reg_rec *next;
+};
+
+extern struct esp_con_reg_rec *esp_con_registry;
+
     #ifdef __cplusplus
 }
     #endif

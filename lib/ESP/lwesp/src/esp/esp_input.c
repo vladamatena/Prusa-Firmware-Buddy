@@ -35,6 +35,8 @@
 #include "esp/esp_input.h"
 #include "esp/esp_buff.h"
 
+#include "dbg.h"
+
 static uint32_t esp_recv_total_len;
 static uint32_t esp_recv_calls;
 
@@ -76,6 +78,8 @@ esp_input(const void* data, size_t len) {
  */
 espr_t
 esp_input_process(const void* data, size_t len) {
+    //_dbg("UART IN: %.*s", len, data);
+
     espr_t res = espOK;
 
     if (!esp.status.f.initialized) {
