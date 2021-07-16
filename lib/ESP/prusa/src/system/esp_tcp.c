@@ -38,6 +38,7 @@
  * This file is part of the ESPIP TCP/IP stack.
  *
  * Author: Marek Mosna <marek.mosna@prusa3d.cz>
+ * Author: Vladimir Matena <vladimir.matena@prusa3d.cz>
  *
  */
 
@@ -52,6 +53,8 @@
     #include "lwip/altcp.h"
     #include "lwip/priv/altcp_priv.h"
     #include "esp/esp_netconn.h"
+
+    #include "sockets/lwesp_sockets_priv.h"
 
     #include "lwip/tcp.h"
 // #include "lwip/mem.h"
@@ -230,6 +233,137 @@ altcp_esp_setup(struct altcp_pcb *conn, esp_netconn_p tpcb) {
     conn->fns = &altcp_esp_functions;
 }
 
+static esp_netconn_t* listen_api;
+
+static espr_t altcp_esp_evt(esp_evt_t* evt) {
+    _dbg("altcp_esp_evt");
+    esp_conn_p conn;
+    esp_netconn_t* nc = NULL;
+    uint8_t close = 0;
+
+    conn = esp_conn_get_from_evt(evt);          /* Get connection from event */
+    switch (esp_evt_get_type(evt)) {
+        /*
+         * A new connection has been active
+         * and should be handled by netconn API
+         */
+        case ESP_EVT_CONN_ACTIVE: {             /* A new connection active is active */
+            _dbg("ESP_EVT_CONN_ACTIVE");
+            if (esp_conn_is_client(conn)) {     /* Was connection started by us? */
+                _dbg("ESP_EVT_CONN_ACTIVE - CLIENT");
+                nc = esp_conn_get_arg(conn);    /* Argument should be already set */
+                if (nc != NULL) {
+                    nc->conn = conn;            /* Save actual connection */
+                } else {
+                    close = 1;                  /* Close this connection, invalid netconn */
+                }
+            } else if (esp_conn_is_server(conn) && listen_api != NULL) {    /* Is the connection server type and we have known listening API? */
+                _dbg("ESP_EVT_CONN_ACTIVE - SERVER");
+                /*
+                 * Create a new netconn structure
+                 * and set it as connection argument.
+                 */
+                nc = esp_netconn_new(ESP_NETCONN_TYPE_TCP); /* Create new API */
+                ESP_DEBUGW(ESP_CFG_DBG_NETCONN | ESP_DBG_TYPE_TRACE | ESP_DBG_LVL_WARNING,
+                    nc == NULL, "[NETCONN] Cannot create new structure for incoming server connection!\r\n");
+
+                if (nc != NULL) {
+                    nc->conn = conn;            /* Set connection handle */
+                    esp_conn_set_arg(conn, nc); /* Set argument for connection */
+
+                    /*
+                     * In case there is no listening connection,
+                     * simply close the connection
+                     */
+                    // if (!esp_sys_mbox_isvalid(&listen_api->mbox_accept) ||
+                    //     !esp_sys_mbox_putnow(&listen_api->mbox_accept, nc)) {
+                    //     close = 1;
+                    // }
+                    altcp_esp_accept(listen_api->mbox_accept, nc, 0); // mboxaccept actually a pointer to altcp conn
+
+                } else {
+                    close = 1;
+                }
+            } else {
+                _dbg("ESP_EVT_CONN_ACTIVE - OTHER");
+                ESP_DEBUGW(ESP_CFG_DBG_NETCONN | ESP_DBG_TYPE_TRACE | ESP_DBG_LVL_WARNING, listen_api == NULL,
+                    "[NETCONN] Closing connection as there is no listening API in netconn!\r\n");
+                close = 1;                      /* Close the connection at this point */
+            }
+
+            /* Decide if some events want to close the connection */
+            if (close) {
+                if (nc != NULL) {
+                    esp_conn_set_arg(conn, NULL);   /* Reset argument */
+                    esp_netconn_delete(nc);     /* Free memory for API */
+                }
+                esp_conn_close(conn, 0);        /* Close the connection */
+                close = 0;
+            }
+            break;
+        }
+
+        /*
+         * We have a new data received which
+         * should have netconn structure as argument
+         */
+        case ESP_EVT_CONN_RECV: {
+            _dbg("ESP_EVT_CONN_RECV");
+            // esp_pbuf_p pbuf;
+
+            // nc = esp_conn_get_arg(conn);        /* Get API from connection */
+            // pbuf = esp_evt_conn_recv_get_buff(evt); /* Get received buff */
+
+            // esp_conn_recved(conn, pbuf);        /* Notify stack about received data */
+            // nc->rcv_packets++;                  /* Increase number of received packets */
+
+            // /*
+            //  * First increase reference number to prevent
+            //  * other thread to process the incoming packet
+            //  * and free it while we still need it here
+            //  *
+            //  * In case of problems writing packet to queue,
+            //  * simply force free to decrease reference counter back to previous value
+            //  */
+            // esp_pbuf_ref(pbuf);                 /* Increase reference counter */
+            // if (!nc || !esp_sys_mbox_isvalid(&nc->mbox_receive)
+            //     || !esp_sys_mbox_putnow(&nc->mbox_receive, pbuf)) {
+            //     ESP_DEBUGF(ESP_CFG_DBG_NETCONN,
+            //         "[NETCONN] Ignoring more data for receive!\r\n");
+            //     esp_pbuf_free(pbuf);            /* Free pbuf */
+            //     return espOKIGNOREMORE;         /* Return OK to free the memory and ignore further data */
+            // }
+            // ESP_DEBUGF(ESP_CFG_DBG_NETCONN | ESP_DBG_TYPE_TRACE,
+            //     "[NETCONN] Written %d bytes to receive mbox\r\n",
+            //     (int)esp_pbuf_length(pbuf, 0));
+            break;
+        }
+
+        /* Connection was just closed */
+        case ESP_EVT_CONN_CLOSED: {
+            _dbg("ESP_EVT_CONN_CLOSED");
+            // nc = esp_conn_get_arg(conn);        /* Get API from connection */
+
+            // /*
+            //  * In case we have a netconn available,
+            //  * simply write pointer to received variable to indicate closed state
+            //  */
+            // if (nc != NULL && esp_sys_mbox_isvalid(&nc->mbox_receive)) {
+            //     esp_sys_mbox_putnow(&nc->mbox_receive, (void *)&recv_closed);
+            // }
+
+            break;
+        }
+        case ESP_EVT_CONN_POLL:
+            _dbg("Unhandled pol event");
+            return espERR;
+        default:
+            _dbg("Unknown event type: %d", esp_evt_get_type(evt));
+            return espERR;
+    }
+    return espOK;
+}
+
 struct altcp_pcb *
 altcp_esp_new_ip_type(u8_t ip_type) {
     _dbg("altcp_esp_new_ip_type");
@@ -326,25 +460,37 @@ altcp_esp_listen(struct altcp_pcb *conn, u8_t backlog, err_t *err) {
         return NULL;
     }
 
-    esp_netconn_p pcb = (esp_netconn_p)conn->state;
-    if (esp_netconn_listen(pcb) != espOK) {
+    esp_netconn_p nc = (esp_netconn_p)conn->state;
+    nc->mbox_accept = conn; // TODO: THis is not nice, we do not use accept mbox so we use it to hold altcp conn pointer
+
+    /*
+    if (esp_netconn_listen(nc) != espOK) {
         _dbg("listen failed");
         return NULL;
     }
 
    /* esp_netconn_p client;
     _dbg("Accepting connection");
-    if(esp_netconn_accept(pcb, &client) != espOK) {
+    if(esp_netconn_accept(nc, &client) != espOK) {
         _dbg("accept failed");
         return NULL;
     }
     _dbg("Connection accepted");*/
 
-    //tcp_accept(pcb, altcp_esp_accept);
-    pcb->accept = altcp_esp_accept;
+
+    /* Enable server on port and set default netconn callback */
+    if(esp_set_server(1, nc->listen_port, ESP_U16(ESP_MIN(backlog, ESP_CFG_MAX_CONNS)), nc->conn_timeout, altcp_esp_evt, NULL, NULL, 1) != espOK) {
+        _dbg("Failed to set connection to server mode");
+    }
+    listen_api = nc;
+
+
+
+    //tcp_accept(nc, altcp_esp_accept);
+    //nc->accept = altcp_esp_accept;
 
     // Register connection (we need to provide callback from esp service thread for accepted connections)
-    struct esp_con_reg_rec *next = (struct esp_con_reg_rec*)mem_malloc(sizeof(struct esp_con_reg_rec));
+    /*struct esp_con_reg_rec *next = (struct esp_con_reg_rec*)mem_malloc(sizeof(struct esp_con_reg_rec));
     next->pcb = conn;
     next->next = NULL;
     if(esp_con_registry) {
@@ -355,7 +501,7 @@ altcp_esp_listen(struct altcp_pcb *conn, u8_t backlog, err_t *err) {
             prev = prev->next;
         }
         prev->next = next;
-    }
+    }*/
     
     return conn; // Return the same connection as we do not realocate listening pcb to save space
 }

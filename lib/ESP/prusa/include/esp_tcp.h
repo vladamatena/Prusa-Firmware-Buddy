@@ -44,6 +44,7 @@
 #define ESP_HDR_ALTCP_TCP_H
 
 #include "esp/esp_config.h"
+#include "sockets/lwesp_sockets_priv.h"
 
 #if ESP_ALTCP /* don't build if not configured for use in lwipopts.h */
 
@@ -60,10 +61,10 @@ struct altcp_pcb *altcp_esp_new_ip_type(u8_t ip_type);
 
 struct altcp_pcb *altcp_esp_alloc(void *arg, u8_t ip_type);
 
-struct esp_native_con {
-    esp_netconn_p netconn;
-    void *native_accept_fn;
-}
+typedef struct {
+    esp_netconn_t conn;
+    err_t (*accept)(void *arg, esp_netconn_p new_tpcb, err_t err);
+} esp_native_conn;
 
 struct esp_con_reg_rec {
     struct altcp_pcb *pcb;
