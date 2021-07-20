@@ -141,14 +141,18 @@ altcp_esp_connected(void *arg, struct tcp_pcb *tpcb, err_t err) {
 static err_t
 altcp_esp_recv(void *arg, struct altcp_pcb *tpcb, struct pbuf *p, err_t err) {
     _dbg("altcp_esp_recv");
-    // esp_netconn_p conn = (esp_netconn_p)arg;
-    // if (conn) {
-    //   esp_netconn_receive(conn, )
-    // }
-    // if (p != NULL) {
-    //   /* prevent memory leaks */
-    //   pbuf_free(p);
-    // }
+    struct altcp_pcb *conn = (struct altcp_pcb *)arg;
+    
+    if(conn) {
+        //ALTCP_TCP_ASSERT_CONN_PCB(conn, tpcb);
+        if(conn->recv) {
+            return conn->recv(conn->arg, conn, p, err);
+        }
+    }
+    if(p != NULL) {
+        /* prevent memory leaks */
+        pbuf_free(p);
+    }
     return ERR_OK;
 }
 
@@ -215,9 +219,9 @@ altcp_esp_setup_callbacks(struct altcp_pcb *pcb, esp_netconn_p tpcb) {
     _dbg("altcp_esp_setup_callbacks");
     LWIP_ASSERT_CORE_LOCKED();
     if (pcb != NULL) {
-        pcb->recv = altcp_esp_recv;
+    /*    pcb->recv = altcp_esp_recv;
         pcb->sent = altcp_esp_sent;
-        pcb->err = altcp_esp_err;
+        pcb->err = altcp_esp_err;*/ // TODO: THIS SHOULD BE THE OTHER WAY ROUND ???
     }
 
     // tcp_arg(tpcb, conn);
@@ -231,12 +235,13 @@ altcp_esp_setup(struct altcp_pcb *conn, esp_netconn_p tpcb) {
     altcp_esp_setup_callbacks(conn, tpcb);
     conn->state = tpcb;
     conn->fns = &altcp_esp_functions;
+    tpcb->mbox_accept = conn; // TODO: Not nice, store conn pointer in mbox accept
 }
 
 static esp_netconn_t* listen_api;
 
 static espr_t altcp_esp_evt(esp_evt_t* evt) {
-    _dbg("altcp_esp_evt");
+    // _dbg("altcp_esp_evt");
     esp_conn_p conn;
     esp_netconn_t* nc = NULL;
     uint8_t close = 0;
@@ -309,23 +314,23 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
          */
         case ESP_EVT_CONN_RECV: {
             _dbg("ESP_EVT_CONN_RECV");
-            // esp_pbuf_p pbuf;
+            esp_pbuf_p pbuf;
 
-            // nc = esp_conn_get_arg(conn);        /* Get API from connection */
-            // pbuf = esp_evt_conn_recv_get_buff(evt); /* Get received buff */
+            nc = esp_conn_get_arg(conn);        /* Get API from connection */
+            pbuf = esp_evt_conn_recv_get_buff(evt); /* Get received buff */
 
-            // esp_conn_recved(conn, pbuf);        /* Notify stack about received data */
-            // nc->rcv_packets++;                  /* Increase number of received packets */
+            esp_conn_recved(conn, pbuf);        /* Notify stack about received data */
+            nc->rcv_packets++;                  /* Increase number of received packets */
 
-            // /*
-            //  * First increase reference number to prevent
-            //  * other thread to process the incoming packet
-            //  * and free it while we still need it here
-            //  *
-            //  * In case of problems writing packet to queue,
-            //  * simply force free to decrease reference counter back to previous value
-            //  */
-            // esp_pbuf_ref(pbuf);                 /* Increase reference counter */
+            /*
+             * First increase reference number to prevent
+             * other thread to process the incoming packet
+             * and free it while we still need it here
+             *
+             * In case of problems writing packet to queue,
+             * simply force free to decrease reference counter back to previous value
+             */
+            esp_pbuf_ref(pbuf);                 /* Increase reference counter */
             // if (!nc || !esp_sys_mbox_isvalid(&nc->mbox_receive)
             //     || !esp_sys_mbox_putnow(&nc->mbox_receive, pbuf)) {
             //     ESP_DEBUGF(ESP_CFG_DBG_NETCONN,
@@ -333,9 +338,21 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
             //     esp_pbuf_free(pbuf);            /* Free pbuf */
             //     return espOKIGNOREMORE;         /* Return OK to free the memory and ignore further data */
             // }
-            // ESP_DEBUGF(ESP_CFG_DBG_NETCONN | ESP_DBG_TYPE_TRACE,
-            //     "[NETCONN] Written %d bytes to receive mbox\r\n",
-            //     (int)esp_pbuf_length(pbuf, 0));
+            if(!nc) {
+                esp_pbuf_free(pbuf);
+            }
+            struct altcp_pcb *pcb = nc->mbox_accept;
+
+            // Copy pbuf data pbuf to pbuf
+            struct pbuf *lwip_pbuf = pbuf_alloc(PBUF_TRANSPORT, esp_pbuf_length(pbuf, 0), PBUF_RAM);
+            esp_pbuf_copy(pbuf, lwip_pbuf->payload, esp_pbuf_length(pbuf, 0), 0);
+            esp_pbuf_free(pbuf);
+
+            altcp_esp_recv(pcb, pcb, lwip_pbuf, 0);
+
+            ESP_DEBUGF(ESP_CFG_DBG_NETCONN | ESP_DBG_TYPE_TRACE,
+                "[NETCONN] Written %d bytes to receive mbox\r\n",
+                (int)esp_pbuf_length(pbuf, 0));
             break;
         }
 
@@ -355,7 +372,7 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
             break;
         }
         case ESP_EVT_CONN_POLL:
-            _dbg("Unhandled pol event");
+            // _dbg("Unhandled pol event");
             return espERR;
         default:
             _dbg("Unknown event type: %d", esp_evt_get_type(evt));
@@ -425,7 +442,7 @@ altcp_esp_recved(struct altcp_pcb *conn, u16_t len) {
     // if (conn != NULL) {
     //   struct tcp_pcb *pcb = (struct tcp_pcb *)conn->state;
     //   ALTCP_TCP_ASSERT_CONN(conn);
-    //   tcp_recved(pcb, len);
+    //tcp_recved(pcb, len);
     // }
 }
 
@@ -562,11 +579,20 @@ altcp_esp_write(struct altcp_pcb *conn, const void *dataptr, u16_t len, u8_t api
     _dbg("altcp_esp_write");
     // struct tcp_pcb *pcb;
     // if (conn == NULL) {
-    return ERR_VAL;
+    //return ERR_VAL;
     // }
     // ALTCP_TCP_ASSERT_CONN(conn);
     // pcb = (struct tcp_pcb *)conn->state;
     // return tcp_write(pcb, dataptr, len, apiflags);
+
+    struct altcp_pcb *pcb = conn->state;
+    esp_netconn_p nc = pcb->state;
+
+    //espr_t err = esp_netconn_write(nc, dataptr, len);
+    size_t written = 0;
+    espr_t err = esp_conn_send(nc->conn, dataptr, len, &written, 0); // TODO: Flags ignored, we could only set blocking
+    _dbg("written: %d out of %d", written, len);
+    return espr_t2err_t(err);
 }
 
 static err_t
@@ -586,7 +612,7 @@ altcp_esp_mss(struct altcp_pcb *conn) {
     _dbg("altcp_esp_mss");
     // struct tcp_pcb *pcb;
     // if (conn == NULL) {
-    return 0;
+    return 256;
     // }
     // ALTCP_TCP_ASSERT_CONN(conn);
     // pcb = (struct tcp_pcb *)conn->state;
@@ -598,7 +624,7 @@ altcp_esp_sndbuf(struct altcp_pcb *conn) {
     _dbg("altcp_esp_sndbuf");
     // struct tcp_pcb *pcb;
     // if (conn == NULL) {
-    return 0;
+    return 256;
     // }
     // ALTCP_TCP_ASSERT_CONN(conn);
     // pcb = (struct tcp_pcb *)conn->state;
