@@ -360,7 +360,7 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
         /* Connection was just closed */
         case ESP_EVT_CONN_CLOSED: {
             _dbg("ESP_EVT_CONN_CLOSED");
-            // nc = esp_conn_get_arg(conn);        /* Get API from connection */
+            nc = esp_conn_get_arg(conn);        /* Get API from connection */
 
             // /*
             //  * In case we have a netconn available,
@@ -370,16 +370,24 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
             //     esp_sys_mbox_putnow(&nc->mbox_receive, (void *)&recv_closed);
             // }
 
+            if(nc) {
+                // altcp_esp_close(nc); TODO: Handle close event
+            }
+
             break;
         }
         case ESP_EVT_CONN_SEND:
             _dbg("ESP_EVT_CONN_SEND");
 
             nc = esp_conn_get_arg(conn);
-            struct altcp_pcb *pcb = nc->mbox_accept;
-            const size_t sent = esp_evt_conn_send_get_length(evt);
+            if(nc) {
+                struct altcp_pcb *pcb = nc->mbox_accept;
+                const size_t sent = esp_evt_conn_send_get_length(evt);
 
-            altcp_esp_sent(pcb, pcb, sent);
+                altcp_esp_sent(pcb, pcb, sent);
+            }
+
+            break;
 
         case ESP_EVT_CONN_POLL:
             // _dbg("Unhandled pol event");
@@ -548,27 +556,38 @@ altcp_esp_abort(struct altcp_pcb *conn) {
 static err_t
 altcp_esp_close(struct altcp_pcb *conn) {
     _dbg("altcp_esp_close");
-    // struct tcp_pcb *pcb;
-    // if (conn == NULL) {
-    //   return ERR_VAL;
-    // }
+    
+    if (conn == NULL) {
+      return ERR_VAL;
+    }
     // ALTCP_TCP_ASSERT_CONN(conn);
-    // pcb = (struct tcp_pcb *)conn->state;
-    // if (pcb) {
+
+    struct esp_netconn *nc = (struct esp_netconn *)conn->state;
+    if (nc) {
     //   err_t err;
     //   tcp_poll_fn oldpoll = pcb->poll;
-    //   altcp_esp_remove_callbacks(pcb);
+       altcp_esp_remove_callbacks(conn);
+
+
+//       espr_t err = esp_netconn_close(nc);
+
+       esp_conn_set_arg(nc->conn, NULL);
+       espr_t err = esp_conn_close(nc->conn, 0);
+
+
+
     //   err = tcp_close(pcb);
-    //   if (err != ERR_OK) {
-    //     /* not closed, set up all callbacks again */
-    //     altcp_esp_setup_callbacks(conn, pcb);
-    //     /* poll callback is not included in the above */
-    //     tcp_poll(pcb, oldpoll, pcb->pollinterval);
-    //     return err;
-    //   }
-    //   conn->state = NULL; /* unsafe to reference pcb after tcp_close(). */
-    // }
-    // altcp_free(conn);
+       if (err != espOK) {
+         /* not closed, set up all callbacks again */
+         altcp_esp_setup_callbacks(conn, nc);
+         /* poll callback is not included in the above */
+    //     tcp_poll(pcb, oldpoll, pcb->pollinterval);  // TODO: HAndle poll
+         return espr_t2err_t(err);
+       }
+       conn->state = NULL; /* unsafe to reference pcb after tcp_close(). */
+    }
+    altcp_free(conn);
+
     return ERR_OK;
 }
 
