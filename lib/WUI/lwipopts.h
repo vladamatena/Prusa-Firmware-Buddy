@@ -152,6 +152,7 @@ extern "C" {
     #define LWIP_COMPAT_SOCKETS        0
     #define LWIP_ALTCP                 1
     #define LWIP_HTTPD_DYNAMIC_FILE_READ 1
+    #define TCP_DEFAULT_LISTEN_BACKLOG 3
 
     #ifdef WUI_HOST_NAME
         #define HTTPD_SERVER_AGENT WUI_HOST_NAME
