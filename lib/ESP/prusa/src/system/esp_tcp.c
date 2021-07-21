@@ -372,6 +372,7 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
 
             if(nc) {
                 // altcp_esp_close(nc); TODO: Handle close event
+                _dbg("Connection closed and NC not NULL - TODO: Free NC");
             }
 
             break;
@@ -573,6 +574,7 @@ altcp_esp_close(struct altcp_pcb *conn) {
 
        esp_conn_set_arg(nc->conn, NULL);
        espr_t err = esp_conn_close(nc->conn, 0);
+     //  esp_netconn_delete(nc);
 
 
 
@@ -722,9 +724,13 @@ altcp_esp_setprio(struct altcp_pcb *conn, u8_t prio) {
 static void
 altcp_esp_dealloc(struct altcp_pcb *conn) {
     _dbg("altcp_esp_dealloc");
-    // ESP_UNUSED_ARG(conn);
     // ALTCP_TCP_ASSERT_CONN(conn);
-    /* no private state to clean up */
+    esp_netconn_p nc = conn->state;
+    if(nc) {
+        esp_netconn_delete(nc);
+        conn->state = NULL;
+    }
+    
 }
 
 static err_t
