@@ -136,8 +136,8 @@ void StartWebServerTask(void const *argument) {
         //esp_http_server_init(NULL, 80);
         // esp_sys_thread_create(NULL, "netconn_client", (esp_sys_thread_fn)netconn_client_thread, NULL, 512, ESP_SYS_THREAD_PRIO);
         httpd_init();
-        osThreadDef(ESPALTCP, esp_altcp_task, osPriorityNormal, 0, 512);
-        osThreadCreate(osThread(ESPALTCP), NULL);
+        // osThreadDef(ESPALTCP, esp_altcp_task, osPriorityNormal, 0, 512);
+        // osThreadCreate(osThread(ESPALTCP), NULL);
     }
 
     for (;;) {

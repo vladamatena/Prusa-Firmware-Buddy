@@ -159,13 +159,13 @@ altcp_esp_recv(void *arg, struct altcp_pcb *tpcb, struct pbuf *p, err_t err) {
 static err_t
 altcp_esp_sent(void *arg, struct altcp_pcb *tpcb, u16_t len) {
     _dbg("altcp_esp_sent");
-    // struct altcp_pcb *conn = (struct altcp_pcb *)arg;
-    // if (conn) {
-    //   ALTCP_TCP_ASSERT_CONN_PCB(conn, tpcb);
-    //   if (conn->sent) {
-    //     return conn->sent(conn->arg, conn, len);
-    //   }
-    // }
+    struct altcp_pcb *conn = (struct altcp_pcb *)arg;
+    if (conn) {
+        //   ALTCP_TCP_ASSERT_CONN_PCB(conn, tpcb);
+        if (conn->sent) {
+            return conn->sent(conn->arg, conn, len);
+        }
+    }
     return ERR_OK;
 }
 
@@ -219,9 +219,10 @@ altcp_esp_setup_callbacks(struct altcp_pcb *pcb, esp_netconn_p tpcb) {
     _dbg("altcp_esp_setup_callbacks");
     LWIP_ASSERT_CORE_LOCKED();
     if (pcb != NULL) {
-    /*    pcb->recv = altcp_esp_recv;
+        pcb->recv = altcp_esp_recv;
         pcb->sent = altcp_esp_sent;
-        pcb->err = altcp_esp_err;*/ // TODO: THIS SHOULD BE THE OTHER WAY ROUND ???
+        pcb->err = altcp_esp_err;
+        // TODO: THIS SHOULD BE THE OTHER WAY ROUND, OR NOT ???
     }
 
     // tcp_arg(tpcb, conn);
@@ -371,6 +372,15 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
 
             break;
         }
+        case ESP_EVT_CONN_SEND:
+            _dbg("ESP_EVT_CONN_SEND");
+
+            nc = esp_conn_get_arg(conn);
+            struct altcp_pcb *pcb = nc->mbox_accept;
+            const size_t sent = esp_evt_conn_send_get_length(evt);
+
+            altcp_esp_sent(pcb, pcb, sent);
+
         case ESP_EVT_CONN_POLL:
             // _dbg("Unhandled pol event");
             return espERR;
@@ -574,6 +584,9 @@ altcp_esp_shutdown(struct altcp_pcb *conn, int shut_rx, int shut_tx) {
     // return tcp_shutdown(pcb, shut_rx, shut_tx);
 }
 
+extern espr_t conn_send(esp_conn_p conn, const esp_ip_t* const ip, esp_port_t port, const void* data,
+            size_t btw, size_t* const bw, uint8_t fau, const uint32_t blocking);
+
 static err_t
 altcp_esp_write(struct altcp_pcb *conn, const void *dataptr, u16_t len, u8_t apiflags) {
     _dbg("altcp_esp_write");
@@ -585,13 +598,16 @@ altcp_esp_write(struct altcp_pcb *conn, const void *dataptr, u16_t len, u8_t api
     // pcb = (struct tcp_pcb *)conn->state;
     // return tcp_write(pcb, dataptr, len, apiflags);
 
-    struct altcp_pcb *pcb = conn->state;
-    esp_netconn_p nc = pcb->state;
+    esp_netconn_p nc = conn->state;
 
     //espr_t err = esp_netconn_write(nc, dataptr, len);
     size_t written = 0;
-    espr_t err = esp_conn_send(nc->conn, dataptr, len, &written, 0); // TODO: Flags ignored, we could only set blocking
+    //espr_t err = esp_conn_send(nc->conn, dataptr, len, &written, 0); // TODO: Flags ignored, we could only set blocking
+    espr_t err = conn_send(nc->conn, NULL, 0, dataptr, len, &written, 0, 0);  // TODO: Flags ignored, we could only set blocking
+
     _dbg("written: %d out of %d", written, len);
+    _dbg("error code: %d", err);
+
     return espr_t2err_t(err);
 }
 
@@ -612,7 +628,7 @@ altcp_esp_mss(struct altcp_pcb *conn) {
     _dbg("altcp_esp_mss");
     // struct tcp_pcb *pcb;
     // if (conn == NULL) {
-    return 256;
+    return 536;
     // }
     // ALTCP_TCP_ASSERT_CONN(conn);
     // pcb = (struct tcp_pcb *)conn->state;
