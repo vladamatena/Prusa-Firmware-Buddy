@@ -219,9 +219,9 @@ altcp_esp_setup_callbacks(struct altcp_pcb *pcb, esp_netconn_p tpcb) {
     _dbg("altcp_esp_setup_callbacks");
     LWIP_ASSERT_CORE_LOCKED();
     if (pcb != NULL) {
-        pcb->recv = altcp_esp_recv;
+  /*      pcb->recv = altcp_esp_recv;
         pcb->sent = altcp_esp_sent;
-        pcb->err = altcp_esp_err;
+        pcb->err = altcp_esp_err;*/
         // TODO: THIS SHOULD BE THE OTHER WAY ROUND, OR NOT ???
     }
 
@@ -286,8 +286,8 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
                     //     close = 1;
                     // }
                     altcp_esp_accept(listen_api->mbox_accept, nc, 0); // mboxaccept actually a pointer to altcp conn
-
                 } else {
+                    _dbg("Netconn not created");
                     close = 1;
                 }
             } else {
@@ -497,24 +497,9 @@ altcp_esp_listen(struct altcp_pcb *conn, u8_t backlog, err_t *err) {
     }
 
     esp_netconn_p nc = (esp_netconn_p)conn->state;
-    nc->mbox_accept = conn; // TODO: THis is not nice, we do not use accept mbox so we use it to hold altcp conn pointer
+    nc->mbox_accept = conn; // TODO: This is not nice, we do not use accept mbox so we use it to hold altcp conn pointer
 
-    /*
-    if (esp_netconn_listen(nc) != espOK) {
-        _dbg("listen failed");
-        return NULL;
-    }
-
-   /* esp_netconn_p client;
-    _dbg("Accepting connection");
-    if(esp_netconn_accept(nc, &client) != espOK) {
-        _dbg("accept failed");
-        return NULL;
-    }
-    _dbg("Connection accepted");*/
-
-
-    /* Enable server on port and set default netconn callback */
+    // Enable server on port and set default netconn callback
     if(esp_set_server(1, nc->listen_port, ESP_U16(ESP_MIN(backlog, ESP_CFG_MAX_CONNS)), nc->conn_timeout, altcp_esp_evt, NULL, NULL, 1) != espOK) {
         _dbg("Failed to set connection to server mode");
     }
@@ -623,8 +608,8 @@ altcp_esp_write(struct altcp_pcb *conn, const void *dataptr, u16_t len, u8_t api
 
     //espr_t err = esp_netconn_write(nc, dataptr, len);
     size_t written = 0;
-    //espr_t err = esp_conn_send(nc->conn, dataptr, len, &written, 0); // TODO: Flags ignored, we could only set blocking
-    espr_t err = conn_send(nc->conn, NULL, 0, dataptr, len, &written, 0, 0);  // TODO: Flags ignored, we could only set blocking
+    espr_t err = esp_conn_send(nc->conn, dataptr, len, &written, 0); // TODO: Flags ignored, we could only set blocking
+    //espr_t err = conn_send(nc->conn, NULL, 0, dataptr, len, &written, 0, 0);  // TODO: Flags ignored, we could only set blocking
 
     _dbg("written: %d out of %d", written, len);
     _dbg("error code: %d", err);

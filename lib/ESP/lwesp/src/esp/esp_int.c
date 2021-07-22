@@ -38,6 +38,8 @@
 #include "esp/esp_unicode.h"
 #include "system/esp_ll.h"
 
+#include "dbg.h"
+
 static esp_recv_t recv_buff;
 static espr_t espi_process_sub_cmd(esp_msg_t* msg, uint8_t* is_ok, uint8_t* is_error, uint8_t* is_ready);
 
@@ -1039,6 +1041,7 @@ espi_process(const void* data, size_t data_len) {
                     esp.evt.type = ESP_EVT_CONN_RECV;
                     esp.evt.evt.conn_data_recv.buff = esp.m.ipd.buff;
                     esp.evt.evt.conn_data_recv.conn = esp.m.ipd.conn;
+                    _dbg("UART PACKET IN");
                     res = espi_send_conn_cb(esp.m.ipd.conn, NULL);
 
                     esp_pbuf_free(esp.m.ipd.buff);  /* Free packet buffer at this point */
@@ -1102,6 +1105,7 @@ espi_process(const void* data, size_t data_len) {
                     switch (ch) {
                         case '\n':
                             RECV_ADD(ch);       /* Add character to input buffer */
+                            _dbg("UART CMD IN: %.*s", recv_buff.len, recv_buff.data);
                             espi_parse_received(&recv_buff);/* Parse received string */
                             RECV_RESET();       /* Reset received string */
                             break;
