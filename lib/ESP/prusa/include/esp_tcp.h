@@ -62,16 +62,12 @@ struct altcp_pcb *altcp_esp_new_ip_type(u8_t ip_type);
 struct altcp_pcb *altcp_esp_alloc(void *arg, u8_t ip_type);
 
 typedef struct {
-    esp_netconn_t conn;
-    err_t (*accept)(void *arg, esp_netconn_p new_tpcb, err_t err);
-} esp_native_conn;
-
-struct esp_con_reg_rec {
-    struct altcp_pcb *pcb;
-    struct esp_con_reg_rec *next;
-};
-
-extern struct esp_con_reg_rec *esp_con_registry;
+    struct esp_conn *econn; // ESP conn connection
+    struct altcp_pcb *alconn; // Application layer TCP connection
+    esp_port_t listen_port;
+    uint16_t conn_timeout;
+    size_t rcv_packets; // Received packets
+} esp_pcb;
 
     #ifdef __cplusplus
 }
