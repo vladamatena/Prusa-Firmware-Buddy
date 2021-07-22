@@ -64,6 +64,7 @@
 extern const struct altcp_functions altcp_esp_functions;
 
 static void altcp_esp_setup(struct altcp_pcb *conn, esp_pcb* epcb);
+static void altcp_esp_dealloc(struct altcp_pcb *conn);
 
 static err_t espr_t2err_t(const espr_t err) {
     switch(err) {
@@ -118,6 +119,7 @@ altcp_esp_accept(void *arg, esp_pcb *new_epcb, err_t err) {
         /* create a new altcp_conn to pass to the next 'accept' callback */
         struct altcp_pcb *new_conn = altcp_alloc();
         if (new_conn == NULL) {
+            _dbg("No mem to alloc altcp !!!");
             return ERR_MEM;
         }
         altcp_esp_setup(new_conn, new_epcb);
@@ -127,18 +129,18 @@ altcp_esp_accept(void *arg, esp_pcb *new_epcb, err_t err) {
 }
 
 static err_t
-altcp_esp_connected(void *arg, struct tcp_pcb *tpcb, err_t err) {
+altcp_esp_connected(void *arg, esp_pcb *epcb, err_t err) {
     _dbg("altcp_esp_connected");
     return ERR_OK;
 }
 
 static err_t
-altcp_esp_recv(void *arg, struct altcp_pcb *tpcb, struct pbuf *p, err_t err) {
+altcp_esp_recv(void *arg, esp_pcb *epcb, struct pbuf *p, err_t err) {
     _dbg("altcp_esp_recv");
     struct altcp_pcb *conn = (struct altcp_pcb *)arg;
     
     if(conn) {
-        //ALTCP_TCP_ASSERT_CONN_PCB(conn, tpcb);
+        //ALTCP_TCP_ASSERT_CONN_PCB(conn, epcb);
         if(conn->recv) {
             return conn->recv(conn->arg, conn, p, err);
         }
@@ -151,11 +153,11 @@ altcp_esp_recv(void *arg, struct altcp_pcb *tpcb, struct pbuf *p, err_t err) {
 }
 
 static err_t
-altcp_esp_sent(void *arg, struct altcp_pcb *tpcb, u16_t len) {
+altcp_esp_sent(void *arg, esp_pcb *epcb, u16_t len) {
     _dbg("altcp_esp_sent");
     struct altcp_pcb *conn = (struct altcp_pcb *)arg;
     if (conn) {
-        //   ALTCP_TCP_ASSERT_CONN_PCB(conn, tpcb);
+        //   ALTCP_TCP_ASSERT_CONN_PCB(conn, epcb);
         if (conn->sent) {
             return conn->sent(conn->arg, conn, len);
         }
@@ -164,11 +166,11 @@ altcp_esp_sent(void *arg, struct altcp_pcb *tpcb, u16_t len) {
 }
 
 static err_t
-altcp_esp_poll(void *arg, struct altcp_pcb *tpcb) {
+altcp_esp_poll(void *arg, esp_pcb *epcb) {
     _dbg("altcp_esp_poll");
     // struct altcp_pcb *conn = (struct altcp_pcb *)arg;
     // if (conn) {
-    //   ALTCP_TCP_ASSERT_CONN_PCB(conn, tpcb);
+    //   ALTCP_TCP_ASSERT_CONN_PCB(conn, epcb);
     //   if (conn->poll) {
     //     return conn->poll(conn->arg, conn);
     //   }
@@ -179,14 +181,14 @@ altcp_esp_poll(void *arg, struct altcp_pcb *tpcb) {
 static void
 altcp_esp_err(void *arg, err_t err) {
     _dbg("altcp_esp_err");
-    // struct altcp_pcb *conn = (struct altcp_pcb *)arg;
-    // if (conn) {
-    //   conn->state = NULL; /* already freed */
-    //   if (conn->err) {
-    //     conn->err(conn->arg, err);
-    //   }
-    //   altcp_free(conn);
-    // }
+    struct altcp_pcb *conn = (struct altcp_pcb *)arg;
+    if (conn) {
+       conn->state = NULL; /* already freed */
+       if (conn->err) {
+          conn->err(conn->arg, err);
+       }
+       altcp_free(conn);
+    }
 }
 
 /* setup functions */
@@ -321,7 +323,7 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
             esp_pbuf_free(pbuf);
 
             struct altcp_pcb *pcb = epcb->alconn;
-            altcp_esp_recv(pcb, pcb, lwip_pbuf, 0);
+            altcp_esp_recv(pcb, epcb, lwip_pbuf, 0);
 
             ESP_DEBUGF(ESP_DBG_TYPE_TRACE,
                 "[ESPTCP] Written %d bytes to receive mbox\r\n",
@@ -335,8 +337,11 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
             epcb = esp_conn_get_arg(conn);        /* Get API from connection */
 
             if(epcb) {
-                // altcp_esp_close(nc); TODO: Handle close event
-                _dbg("Connection closed and NC not NULL - TODO: Free NC");
+                _dbg("Connection closed and epcb not NULL -> free, err");
+                struct altcp_pcb *pcb = epcb->alconn;
+                esp_conn_set_arg(conn, NULL);
+                esp_ip_free(epcb);
+                altcp_esp_err(pcb, ERR_CLSD);
             }
 
             break;
@@ -348,7 +353,7 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
             if(epcb) {
                 struct altcp_pcb *pcb = epcb->alconn;
                 const size_t sent = esp_evt_conn_send_get_length(evt);
-                altcp_esp_sent(pcb, pcb, sent);
+                altcp_esp_sent(pcb, epcb, sent);
             }
 
             break;
