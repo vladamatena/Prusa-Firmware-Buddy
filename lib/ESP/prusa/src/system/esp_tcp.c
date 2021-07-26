@@ -481,7 +481,6 @@ altcp_esp_listen(struct altcp_pcb *conn, u8_t backlog, err_t *err) {
     }
 
     esp_pcb *epcb = (esp_pcb*)conn->state;
-    epcb->alconn = conn;
 
     // Enable server on port and set default altcp callback
     if(esp_set_server(1, epcb->listen_port, ESP_U16(ESP_MIN(backlog, ESP_CFG_MAX_CONNS)), epcb->conn_timeout, altcp_esp_evt, NULL, NULL, 1) != espOK) {
