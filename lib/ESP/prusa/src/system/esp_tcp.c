@@ -169,13 +169,18 @@ altcp_esp_sent(void *arg, esp_pcb *epcb, u16_t len) {
 static err_t
 altcp_esp_poll(void *arg, esp_pcb *epcb) {
     _dbg("altcp_esp_poll");
-    // struct altcp_pcb *conn = (struct altcp_pcb *)arg;
-    // if (conn) {
+    _dbg("arg: %x, esp_pcb: %x", arg, epcb);
+    struct altcp_pcb *conn = (struct altcp_pcb *)arg;
+    if (conn) {
     //   ALTCP_TCP_ASSERT_CONN_PCB(conn, epcb);
-    //   if (conn->poll) {
-    //     return conn->poll(conn->arg, conn);
-    //   }
-    // }
+       if (conn->poll) {
+
+        _dbg("CALLING POL FUNC %x, arg: %x", conn->poll, conn->arg);
+         err_t ret = conn->poll(conn->arg, conn);
+         _dbg("POLL FUNC RETURNED");
+         return ret;
+       }
+    }
     return ERR_OK;
 }
 
@@ -364,8 +369,14 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
             break;
 
         case ESP_EVT_CONN_POLL:
-            // _dbg("Unhandled pol event");
-            return espERR;
+            _dbg("ESP_EVT_CONN_POLL");
+            epcb = esp_conn_get_arg(conn);
+            if(epcb == NULL) {
+                _dbg("epcb is NULL !!!");
+                break;
+            }
+            altcp_esp_poll(epcb->alconn, epcb);
+            break;
         default:
             _dbg("Unknown event type: %d", esp_evt_get_type(evt));
             return espERR;
