@@ -517,7 +517,6 @@ altcp_esp_close(struct altcp_pcb *conn) {
         }
         conn->state = NULL; /* unsafe to reference pcb after tcp_close(). */
     }
-    altcp_free(conn);
 
     return ERR_OK;
 }
