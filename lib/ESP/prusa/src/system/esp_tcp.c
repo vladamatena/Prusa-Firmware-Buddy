@@ -517,7 +517,7 @@ altcp_esp_close(struct altcp_pcb *conn) {
     //   tcp_poll_fn oldpoll = pcb->poll;
         altcp_esp_remove_callbacks(conn);
 
-        esp_conn_set_arg(epcb->econn, NULL);
+        _dbg("CLosing connections: %d", esp_conn_getnum(epcb->econn));
         espr_t err = esp_conn_close(epcb->econn, 0);
 
         if (err != espOK) {
