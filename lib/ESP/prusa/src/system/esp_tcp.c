@@ -115,17 +115,19 @@ static err_t
 altcp_esp_accept(void *arg, esp_pcb *new_epcb, err_t err) {
     _dbg("altcp_esp_accept");
     struct altcp_pcb *listen_conn = (struct altcp_pcb *)arg;
-    if (listen_conn && listen_conn->accept) {
-        /* create a new altcp_conn to pass to the next 'accept' callback */
-        struct altcp_pcb *new_conn = altcp_alloc();
-        if (new_conn == NULL) {
-            _dbg("No mem to alloc altcp !!!");
-            return ERR_MEM;
-        }
-        altcp_esp_setup(new_conn, new_epcb);
-        return listen_conn->accept(listen_conn->arg, new_conn, err);
+    if (!listen_conn || !listen_conn->accept) {
+        _dbg("!!! listen connection not set properly !!!");
+        return ERR_ARG;
     }
-    return ERR_ARG;
+
+    /* create a new altcp_conn to pass to the next 'accept' callback */
+    struct altcp_pcb *new_conn = altcp_alloc();
+    if (new_conn == NULL) {
+        _dbg("No mem to alloc altcp !!!");
+        return ERR_MEM;
+    }
+    altcp_esp_setup(new_conn, new_epcb);
+    return listen_conn->accept(listen_conn->arg, new_conn, err);
 }
 
 static err_t
@@ -254,6 +256,7 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
     uint8_t close = 0;
 
     conn = esp_conn_get_from_evt(evt);
+    _dbg("Event from conn %d", conn_get_val_id(conn));
     switch (esp_evt_get_type(evt)) {
         case ESP_EVT_CONN_ACTIVE: {
             _dbg("ESP_EVT_CONN_ACTIVE");
