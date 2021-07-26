@@ -64,7 +64,6 @@
 extern const struct altcp_functions altcp_esp_functions;
 
 static void altcp_esp_setup(struct altcp_pcb *conn, esp_pcb* epcb);
-static void altcp_esp_dealloc(struct altcp_pcb *conn);
 
 static err_t espr_t2err_t(const espr_t err) {
     switch(err) {
@@ -235,6 +234,7 @@ altcp_esp_setup(struct altcp_pcb *conn, esp_pcb *epcb) {
     conn->state = epcb;
     conn->fns = &altcp_esp_functions;
     epcb->alconn = conn;
+    _dbg("Setup epcb: %x, alcon: %x", epcb, epcb->alconn);
 }
 
 static esp_pcb *esp_new_ip_type(u8_t ip_type) {
@@ -256,7 +256,7 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
     uint8_t close = 0;
 
     conn = esp_conn_get_from_evt(evt);
-    _dbg("Event from conn %d", conn_get_val_id(conn));
+    _dbg("Event from conn %d", esp_conn_getnum(conn));
     switch (esp_evt_get_type(evt)) {
         case ESP_EVT_CONN_ACTIVE: {
             _dbg("ESP_EVT_CONN_ACTIVE");
@@ -266,6 +266,7 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
                 if (epcb != NULL) {
                     epcb->econn = conn;
                 } else {
+                    _dbg("ACTIVE CLIENT WITHOUT EPCB POINTER !!!!");
                     close = 1;
                 }
             } else if (esp_conn_is_server(conn) && listen_api != NULL) {
@@ -292,6 +293,7 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
             /* Decide if some events want to close the connection */
             if (close) {
                 if (epcb != NULL) {
+                    _dbg("Closing conn %d", esp_conn_getnum(conn));
                     esp_conn_set_arg(conn, NULL);   /* Reset argument */
                     esp_ip_free(epcb);
                 }
