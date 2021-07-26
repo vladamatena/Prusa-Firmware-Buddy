@@ -1106,7 +1106,7 @@ espi_process(const void* data, size_t data_len) {
                         case '\n':
                             RECV_ADD(ch);       /* Add character to input buffer */
                             if(recv_buff.len > 2) {
-                                _dbg("UART CMD IN: %.*s", recv_buff.len, recv_buff.data);
+                                //_dbg("UART CMD IN: %.*s", recv_buff.len, recv_buff.data);
                             }
                             espi_parse_received(&recv_buff);/* Parse received string */
                             RECV_RESET();       /* Reset received string */
