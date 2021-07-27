@@ -109,6 +109,24 @@ static err_t espr_t2err_t(const espr_t err) {
     }
 }
 
+static void ALTCP_TCP_ASSERT_CONN_PCB(struct altcp_pcb *conn, esp_pcb *epcb) {
+    if(!conn) {
+        _dbg("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !conn");
+    }
+
+    if(!epcb) {
+        _dbg("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !epcb");
+    }
+
+    if(conn->state != epcb) {
+        _dbg("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! conn->state: %x != epcb: %x", conn->state, epcb);
+    }
+
+    if (epcb->alconn != conn) {
+        _dbg("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! epcb->alconn: %x != conn: %x", epcb->alconn, conn);
+    }
+}
+
 /* callback functions for TCP */
 static err_t
 altcp_esp_accept(void *arg, esp_pcb *new_epcb, err_t err) {
@@ -141,13 +159,13 @@ altcp_esp_recv(void *arg, esp_pcb *epcb, struct pbuf *p, err_t err) {
     struct altcp_pcb *conn = (struct altcp_pcb *)arg;
     
     if(conn) {
-        //ALTCP_TCP_ASSERT_CONN_PCB(conn, epcb);
+        ALTCP_TCP_ASSERT_CONN_PCB(conn, epcb);
         if(conn->recv) {
             return conn->recv(conn->arg, conn, p, err);
         }
     }
     if(p != NULL) {
-        /* prevent memory leaks */
+        // prevent memory leaks
         pbuf_free(p);
     }
     return ERR_OK;
@@ -158,7 +176,7 @@ altcp_esp_sent(void *arg, esp_pcb *epcb, u16_t len) {
     _dbg("altcp_esp_sent");
     struct altcp_pcb *conn = (struct altcp_pcb *)arg;
     if (conn) {
-        //   ALTCP_TCP_ASSERT_CONN_PCB(conn, epcb);
+        ALTCP_TCP_ASSERT_CONN_PCB(conn, epcb);
         if (conn->sent) {
             return conn->sent(conn->arg, conn, len);
         }
@@ -172,7 +190,7 @@ altcp_esp_poll(void *arg, esp_pcb *epcb) {
     _dbg("arg: %x, esp_pcb: %x", arg, epcb);
     struct altcp_pcb *conn = (struct altcp_pcb *)arg;
     if (conn) {
-    //   ALTCP_TCP_ASSERT_CONN_PCB(conn, epcb);
+       ALTCP_TCP_ASSERT_CONN_PCB(conn, epcb);
        if (conn->poll) {
 
         _dbg("CALLING POL FUNC %x, arg: %x", conn->poll, conn->arg);
