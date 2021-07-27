@@ -255,7 +255,6 @@ static void esp_ip_free(esp_pcb* epcb) {
 static esp_pcb* listen_api;
 
 static espr_t altcp_esp_evt(esp_evt_t* evt) {
-    // _dbg("altcp_esp_evt");
     esp_conn_p conn;
     esp_pcb* epcb = NULL;
     uint8_t close = 0;
@@ -416,36 +415,19 @@ altcp_esp_alloc(void *arg, u8_t ip_type) {
 
 struct altcp_pcb *
 altcp_esp_wrap(struct tcp_pcb *tpcb) {
-    _dbg("altcp_esp_wrap");
-    // if (tpcb != NULL) {
-    //   struct altcp_pcb *ret = altcp_alloc();
-    //   if (ret != NULL) {
-    //     altcp_esp_setup(ret, tpcb);
-    //     return ret;
-    //   }
-    // }
+    _dbg("altcp_esp_wrap - NOT IMPLEMENTED");
     return NULL;
 }
 
 /* "virtual" functions calling into tcp */
 static void
 altcp_esp_set_poll(struct altcp_pcb *conn, u8_t interval) {
-    _dbg("altcp_esp_set_poll");
-    // if (conn != NULL) {
-    //   struct tcp_pcb *pcb = (struct tcp_pcb *)conn->state;
-    //   ALTCP_TCP_ASSERT_CONN(conn);
-    //   tcp_poll(pcb, altcp_esp_poll, interval);
-    // }
+    _dbg("altcp_esp_set_poll - NOT IMPLEMENTED");
 }
 
 static void
 altcp_esp_recved(struct altcp_pcb *conn, u16_t len) {
-    _dbg("altcp_esp_recved");
-    // if (conn != NULL) {
-    //   struct tcp_pcb *pcb = (struct tcp_pcb *)conn->state;
-    //   ALTCP_TCP_ASSERT_CONN(conn);
-    //tcp_recved(pcb, len);
-    // }
+    _dbg("altcp_esp_recved - NOT IMPLEMENTED");
 }
 
 static err_t
@@ -462,15 +444,8 @@ altcp_esp_bind(struct altcp_pcb *conn, const ip_addr_t *ipaddr, u16_t port) {
 
 static err_t
 altcp_esp_connect(struct altcp_pcb *conn, const ip_addr_t *ipaddr, u16_t port, altcp_connected_fn connected) {
-    _dbg("altcp_esp_connect");
-    // struct tcp_pcb *pcb;
-    // if (conn == NULL) {
+    _dbg("altcp_esp_connect - NOT IMPLEMENTED"); // TODO: Implemnet connect
     return ERR_VAL;
-    // }
-    // ALTCP_TCP_ASSERT_CONN(conn);
-    // conn->connected = connected;
-    // pcb = (struct tcp_pcb *)conn->state;
-    // return tcp_connect(pcb, ipaddr, port, altcp_esp_connected);
 }
 
 static struct altcp_pcb *
@@ -492,14 +467,7 @@ altcp_esp_listen(struct altcp_pcb *conn, u8_t backlog, err_t *err) {
 
 static void
 altcp_esp_abort(struct altcp_pcb *conn) {
-    _dbg("altcp_esp_abort");
-    // if (conn != NULL) {
-    //   struct tcp_pcb *pcb = (struct tcp_pcb *)conn->state;
-    //   ALTCP_TCP_ASSERT_CONN(conn);
-    //   if (pcb) {
-    //     tcp_abort(pcb);
-    //   }
-    // }
+    _dbg("altcp_esp_abort - NOT IMPLEMENTED");
 }
 
 static err_t
@@ -509,22 +477,17 @@ altcp_esp_close(struct altcp_pcb *conn) {
     if (conn == NULL) {
         return ERR_VAL;
     }
-    // ALTCP_TCP_ASSERT_CONN(conn);
 
     esp_pcb *epcb = (esp_pcb*)conn->state;
     if (epcb) {
-    //   err_t err;
-    //   tcp_poll_fn oldpoll = pcb->poll;
         altcp_esp_remove_callbacks(conn);
 
         _dbg("CLosing connections: %d", esp_conn_getnum(epcb->econn));
         espr_t err = esp_conn_close(epcb->econn, 0);
 
         if (err != espOK) {
-         /* not closed, set up all callbacks again */
+            // not closed, set up all callbacks again
             altcp_esp_setup_callbacks(conn, epcb);
-         /* poll callback is not included in the above */
-    //     tcp_poll(pcb, oldpoll, pcb->pollinterval);  // TODO: HAndle poll
             return espr_t2err_t(err);
         }
         conn->state = NULL; /* unsafe to reference pcb after tcp_close(). */
@@ -535,14 +498,8 @@ altcp_esp_close(struct altcp_pcb *conn) {
 
 static err_t
 altcp_esp_shutdown(struct altcp_pcb *conn, int shut_rx, int shut_tx) {
-    _dbg("altcp_esp_shutdown");
-    // struct tcp_pcb *pcb;
-    // if (conn == NULL) {
+    _dbg("altcp_esp_shutdown - NOT IMPLEMENTED");
     return ERR_VAL;
-    // }
-    // ALTCP_TCP_ASSERT_CONN(conn);
-    // pcb = (struct tcp_pcb *)conn->state;
-    // return tcp_shutdown(pcb, shut_rx, shut_tx);
 }
 
 static err_t
@@ -563,91 +520,45 @@ altcp_esp_write(struct altcp_pcb *conn, const void *dataptr, u16_t len, u8_t api
 
 static err_t
 altcp_esp_output(struct altcp_pcb *conn) {
-    _dbg("altcp_esp_output");
-    // struct tcp_pcb *pcb;
-    // if (conn == NULL) {
+    _dbg("altcp_esp_output - NOT IMPLEMENTED");
     return ERR_VAL;
-    // }
-    // ALTCP_TCP_ASSERT_CONN(conn);
-    // pcb = (struct tcp_pcb *)conn->state;
-    // return tcp_output(pcb);
 }
 
 static u16_t
 altcp_esp_mss(struct altcp_pcb *conn) {
-    _dbg("altcp_esp_mss");
-    // struct tcp_pcb *pcb;
-    // if (conn == NULL) {
-    return 536; // Minimal requires MSS
-    // }
-    // ALTCP_TCP_ASSERT_CONN(conn);
-    // pcb = (struct tcp_pcb *)conn->state;
-    // return tcp_mss(pcb);
+    return 536; // Minimal required MSS, TODO: Implement properly
 }
 
 static u16_t
 altcp_esp_sndbuf(struct altcp_pcb *conn) {
-    _dbg("altcp_esp_sndbuf");
-    // struct tcp_pcb *pcb;
-    // if (conn == NULL) {
     return 256; // TODO: Some reasoneable size. Reading from ESP would be better
-    // }
-    // ALTCP_TCP_ASSERT_CONN(conn);
-    // pcb = (struct tcp_pcb *)conn->state;
-    // return tcp_sndbuf(pcb);
 }
 
 static u16_t
 altcp_esp_sndqueuelen(struct altcp_pcb *conn) {
     _dbg("altcp_esp_sndqueuelen");
-    // struct tcp_pcb *pcb;
-    // if (conn == NULL) {
-    return 0;
-    // }
-    // ALTCP_TCP_ASSERT_CONN(conn);
-    // pcb = (struct tcp_pcb *)conn->state;
-    // return tcp_sndqueuelen(pcb);
+    return 0; // TODO: Implement properly
 }
 
 static void
 altcp_esp_nagle_disable(struct altcp_pcb *conn) {
-    _dbg("altcp_esp_nagle_disable");
-    // if (conn && conn->state) {
-    //   struct tcp_pcb *pcb = (struct tcp_pcb *)conn->state;
-    //   ALTCP_TCP_ASSERT_CONN(conn);
-    //   tcp_nagle_disable(pcb);
-    // }
+    _dbg("altcp_esp_nagle_disable - NOT IMPLEMENTED");
 }
 
 static void
 altcp_esp_nagle_enable(struct altcp_pcb *conn) {
-    _dbg("altcp_esp_nagle_ensable");
-    // if (conn && conn->state) {
-    //   struct tcp_pcb *pcb = (struct tcp_pcb *)conn->state;
-    //   ALTCP_TCP_ASSERT_CONN(conn);
-    //   tcp_nagle_enable(pcb);
-    // }
+    _dbg("altcp_esp_nagle_ensable - NOT IMPLEMENTED");
 }
 
 static int
 altcp_esp_nagle_disabled(struct altcp_pcb *conn) {
-    _dbg("altcp_esp_nagle_disabled");
-    // if (conn && conn->state) {
-    //   struct tcp_pcb *pcb = (struct tcp_pcb *)conn->state;
-    //   ALTCP_TCP_ASSERT_CONN(conn);
-    //   return tcp_nagle_disabled(pcb);
-    // }
+    _dbg("altcp_esp_nagle_disabled - NOT IMPLEMENTED");
     return 0;
 }
 
 static void
 altcp_esp_setprio(struct altcp_pcb *conn, u8_t prio) {
-    _dbg("altcp_esp_setprio");
-    // if (conn != NULL) {
-    //   struct tcp_pcb *pcb = (struct tcp_pcb *)conn->state;
-    //   ALTCP_TCP_ASSERT_CONN(conn);
-    //   tcp_setprio(pcb, prio);
-    // }
+    _dbg("altcp_esp_setprio - NOT IMPLEMENTED");
 }
 
 static void
@@ -662,46 +573,19 @@ altcp_esp_dealloc(struct altcp_pcb *conn) {
 
 static err_t
 altcp_esp_get_tcp_addrinfo(struct altcp_pcb *conn, int local, ip_addr_t *addr, u16_t *port) {
-    _dbg("altcp_esp_get_tcp_addrinfo");
-    // if (conn) {
-    //   struct tcp_pcb *pcb = (struct tcp_pcb *)conn->state;
-    //   ALTCP_TCP_ASSERT_CONN(conn);
-    //   return tcp_tcp_get_tcp_addrinfo(pcb, local, addr, port);
-    // }
+    _dbg("altcp_esp_get_tcp_addrinfo - NOT IMPLEMENTED");
     return ERR_VAL;
 }
 
 static ip_addr_t *
 altcp_esp_get_ip(struct altcp_pcb *conn, int local) {
-    _dbg("altcp_esp_get_ip");
-    // if (conn) {
-    //   struct tcp_pcb *pcb = (struct tcp_pcb *)conn->state;
-    //   ALTCP_TCP_ASSERT_CONN(conn);
-    //   if (pcb) {
-    //     if (local) {
-    //       return &pcb->local_ip;
-    //     } else {
-    //       return &pcb->remote_ip;
-    //     }
-    //   }
-    // }
+    _dbg("altcp_esp_get_ip - NOT IMPLEMENTED");
     return NULL;
 }
 
 static u16_t
 altcp_esp_get_port(struct altcp_pcb *conn, int local) {
-    _dbg("altcp_esp_get_port");
-    // if (conn) {
-    //   struct tcp_pcb *pcb = (struct tcp_pcb *)conn->state;
-    //   ALTCP_TCP_ASSERT_CONN(conn);
-    //   if (pcb) {
-    //     if (local) {
-    //       return pcb->local_port;
-    //     } else {
-    //       return pcb->remote_port;
-    //     }
-    //   }
-    // }
+    _dbg("altcp_esp_get_port - NOT IMPLEMENTED");
     return 0;
 }
 
