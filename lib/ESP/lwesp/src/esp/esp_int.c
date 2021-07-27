@@ -1041,7 +1041,7 @@ espi_process(const void* data, size_t data_len) {
                     esp.evt.type = ESP_EVT_CONN_RECV;
                     esp.evt.evt.conn_data_recv.buff = esp.m.ipd.buff;
                     esp.evt.evt.conn_data_recv.conn = esp.m.ipd.conn;
-                    _dbg("UART PACKET IN");
+                    _dbg("UART PACKET IN for conn: %d, data: %.*s", esp_conn_getnum(esp.m.ipd.conn), esp.m.ipd.buff->len, esp.m.ipd.buff->payload);
                     res = espi_send_conn_cb(esp.m.ipd.conn, NULL);
 
                     esp_pbuf_free(esp.m.ipd.buff);  /* Free packet buffer at this point */
