@@ -200,42 +200,8 @@ altcp_esp_err(void *arg, err_t err) {
 /* setup functions */
 
 static void
-altcp_esp_remove_callbacks(struct altcp_pcb *pcb) {
-    _dbg("altcp_esp_remove_callbacks");
-    LWIP_ASSERT_CORE_LOCKED();
-    if (pcb != NULL) {
-        pcb->recv = NULL;
-        pcb->sent = NULL;
-        pcb->err = NULL;
-        pcb->poll = NULL;
-    }
-    // tcp_arg(tpcb, NULL);
-    // tcp_recv(tpcb, NULL);
-    // tcp_sent(tpcb, NULL);
-    // tcp_err(tpcb, NULL);
-    // tcp_poll(tpcb, NULL, tpcb->pollinterval);
-}
-
-static void
-altcp_esp_setup_callbacks(struct altcp_pcb *pcb, esp_pcb *epcb) {
-    _dbg("altcp_esp_setup_callbacks");
-    LWIP_ASSERT_CORE_LOCKED();
-    if (pcb != NULL) {
-  /*      pcb->recv = altcp_esp_recv;
-        pcb->sent = altcp_esp_sent;
-        pcb->err = altcp_esp_err;*/
-        // TODO: THIS SHOULD BE THE OTHER WAY ROUND, OR NOT ???
-    }
-
-    // tcp_arg(tpcb, conn);
-    /* tcp_poll is set when interval is set by application */
-    /* listen is set totally different :-) */
-}
-
-static void
 altcp_esp_setup(struct altcp_pcb *conn, esp_pcb *epcb) {
     _dbg("altcp_esp_setup");
-    altcp_esp_setup_callbacks(conn, epcb);
     conn->state = epcb;
     conn->fns = &altcp_esp_functions;
     epcb->alconn = conn;
@@ -480,14 +446,10 @@ altcp_esp_close(struct altcp_pcb *conn) {
 
     esp_pcb *epcb = (esp_pcb*)conn->state;
     if (epcb) {
-        altcp_esp_remove_callbacks(conn);
-
         _dbg("CLosing connections: %d", esp_conn_getnum(epcb->econn));
         espr_t err = esp_conn_close(epcb->econn, 0);
 
         if (err != espOK) {
-            // not closed, set up all callbacks again
-            altcp_esp_setup_callbacks(conn, epcb);
             return espr_t2err_t(err);
         }
         conn->state = NULL; /* unsafe to reference pcb after tcp_close(). */
