@@ -470,7 +470,6 @@ altcp_esp_close(struct altcp_pcb *conn) {
         if (err != espOK) {
             return espr_t2err_t(err);
         }
-        conn->state = NULL; /* unsafe to reference pcb after tcp_close(). */
     }
 
     return ERR_OK;
