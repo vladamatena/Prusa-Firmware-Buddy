@@ -150,6 +150,10 @@ altcp_esp_accept(void *arg, esp_pcb *new_epcb, err_t err) {
 static err_t
 altcp_esp_connected(void *arg, esp_pcb *epcb, err_t err) {
     _dbg("altcp_esp_connected");
+    struct altcp_pcb *conn = (struct altcp_pcb *)arg;
+    if(epcb->alconn && epcb->alconn->connected) {
+        epcb->alconn->connected(conn->arg, conn, 0);
+    }
     return ERR_OK;
 }
 
@@ -253,6 +257,7 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
                 epcb = esp_conn_get_arg(conn);
                 if (epcb != NULL) {
                     epcb->econn = conn;
+                    altcp_esp_connected(epcb->alconn, epcb, 0);
                 } else {
                     _dbg("ACTIVE CLIENT WITHOUT EPCB POINTER !!!!");
                     close = 1;
@@ -428,8 +433,16 @@ altcp_esp_bind(struct altcp_pcb *conn, const ip_addr_t *ipaddr, u16_t port) {
 
 static err_t
 altcp_esp_connect(struct altcp_pcb *conn, const ip_addr_t *ipaddr, u16_t port, altcp_connected_fn connected) {
-    _dbg("altcp_esp_connect - NOT IMPLEMENTED"); // TODO: Implemnet connect
-    return ERR_VAL;
+    _dbg("altcp_esp_connect"); // TODO: Not properly tested
+    if (conn == NULL) {
+        return ERR_VAL;
+    }
+
+    esp_pcb *epcb = (esp_pcb*)conn->state;
+    memcpy(epcb->host, ip4addr_ntoa(ipaddr), IP4ADDR_STRLEN_MAX);
+    const espr_t ret = esp_conn_start(&epcb->econn, ESP_CONN_TYPE_TCP, epcb->host, port, NULL, altcp_esp_evt, 0);
+    epcb->alconn->connected = connected;
+    return espr_t2err_t(ret);
 }
 
 static struct altcp_pcb *
