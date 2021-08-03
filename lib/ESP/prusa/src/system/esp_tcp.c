@@ -355,7 +355,6 @@ static espr_t altcp_esp_evt(esp_evt_t* evt) {
         }
         case ESP_EVT_CONN_SEND:
             _dbg("ESP_EVT_CONN_SEND");
-
             epcb = esp_conn_get_arg(conn);
             if(epcb) {
                 struct altcp_pcb *pcb = epcb->alconn;
@@ -532,7 +531,7 @@ altcp_esp_mss(struct altcp_pcb *conn) {
 
 static u16_t
 altcp_esp_sndbuf(struct altcp_pcb *conn) {
-    return 256; // TODO: Some reasoneable size. Reading from ESP would be better
+    return 536 / 2; // TODO: Some reasoneable size. Reading from ESP would be better
 }
 
 static u16_t
