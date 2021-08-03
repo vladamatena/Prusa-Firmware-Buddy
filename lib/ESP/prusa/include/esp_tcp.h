@@ -46,6 +46,8 @@
 #include "esp/esp_config.h"
 #include "sockets/lwesp_sockets_priv.h"
 
+#define EPCB_POOL_SIZE 10
+
 #if ESP_ALTCP /* don't build if not configured for use in lwipopts.h */
 
     #include "lwip/altcp.h"

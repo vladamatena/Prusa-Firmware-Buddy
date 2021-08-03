@@ -230,14 +230,23 @@ altcp_esp_setup(struct altcp_pcb *conn, esp_pcb *epcb) {
     _dbg("Setup epcb: %x, alcon: %x", epcb, epcb->alconn);
 }
 
+LWIP_MEMPOOL_DECLARE(EPCB_POOL, EPCB_POOL_SIZE, sizeof(esp_pcb), "ESP PCB pool");
+
+static int memp_initialized = 0;
+
 static esp_pcb *esp_new_ip_type(u8_t ip_type) {
-    esp_pcb *pcb = (esp_pcb*)malloc(sizeof(esp_pcb));
+    if(!memp_initialized) {
+        memp_initialized = 1;
+        LWIP_MEMPOOL_INIT(EPCB_POOL);
+    }
+
+    esp_pcb *pcb = (esp_pcb*)LWIP_MEMPOOL_ALLOC(EPCB_POOL);
     memset(pcb, 0, sizeof(esp_pcb));
     return pcb;
 }
 
 static void esp_ip_free(esp_pcb* epcb) {
-    free(epcb);
+    LWIP_MEMPOOL_FREE(EPCB_POOL, epcb);
 }
 
 static esp_pcb* listen_api;
