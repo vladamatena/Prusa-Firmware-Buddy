@@ -17,6 +17,7 @@ typedef struct {
 
 extern uint32_t esp_get_device_model();
 extern uint32_t esp_initialize();
+extern uint32_t esp_set_baudrate(uint32_t baudrate);
 extern uint32_t esp_present(uint32_t);
 extern uint32_t esp_is_device_presented();
 extern uint32_t esp_connect_to_AP(const ap_entry_t *);

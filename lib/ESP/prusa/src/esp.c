@@ -106,6 +106,20 @@ uint32_t esp_initialize() {
     return eres;
 }
 
+static void baudrate_change_evt(espr_t res, void *arg) {
+    if (res != espOK) {
+        _dbg("ESP baudrate change failed !!!");
+        return;
+    }
+    uint32_t baudrate = (uint32_t)arg;
+    _dbg("ESP baudrate change success, reconfiguring UART for %d", baudrate);
+    esp_reconfigure_uart(baudrate);
+}
+
+uint32_t esp_set_baudrate(const uint32_t baudrate) {
+    return esp_set_at_baudrate(baudrate, baudrate_change_evt, (void *)baudrate, 1);
+}
+
 uint32_t esp_connect_to_AP(const ap_entry_t *preferead_ap) {
     espr_t eres;
     uint32_t tried = MAX_TIMEOUT_ATTEMPTS;

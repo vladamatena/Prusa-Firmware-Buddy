@@ -182,6 +182,8 @@ void StartWebServerTask(void const *argument) {
     /*
     // TODO: Handle enable disable of ESP
     _dbg("LwESP initialized with result = %ld", esp_initialize());
+    _dbg("LwESP baudrate change with result = %ld", esp_set_baudrate(1000000));
+
     ap_entry_t ap = { "esptest", "lwesp8266" };
     if (!esp_connect_to_AP(&ap)) {
         _dbg("LwESP connect to AP %s!", ap.ssid);
