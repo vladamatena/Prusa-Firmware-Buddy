@@ -1,5 +1,7 @@
 #include "esp.h"
 #include "esp/esp_includes.h"
+#include "lwesp_ll_buddy.h"
+
 #include "dbg.h"
 
 #define MAX_TIMEOUT_ATTEMPTS (2UL)
@@ -95,6 +97,7 @@ uint32_t esp_is_device_presented() {
 
 uint32_t esp_initialize() {
     espr_t eres;
+    esp_hard_reset_device();
     eres = esp_init(NULL, 1);
     if (eres != espOK) {
         return eres;
