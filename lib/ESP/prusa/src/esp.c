@@ -1,6 +1,9 @@
 #include "esp.h"
 #include "esp/esp_includes.h"
 #include "lwesp_ll_buddy.h"
+#include "esp_loader.h"
+#include "stm32_port.h"
+#include "ff.h"
 
 #include "dbg.h"
 
@@ -104,6 +107,100 @@ uint32_t esp_initialize() {
     }
     //    eres = esp_device_set_present(0, NULL, NULL, 1);
     return eres;
+}
+
+espr_t esp_flash_initialize() {
+    espr_t err = esp_ll_deinit(NULL);
+    if (err != espOK) {
+        return err;
+    }
+    esp_reconfigure_uart(ESP_CFG_AT_PORT_BAUDRATE);
+    esp_set_operating_mode(ESP_FLASHING_MODE);
+    loader_stm32_config_t loader_config = {
+        .huart = &huart6,
+        .port_io0 = GPIOE,
+        .pin_num_io0 = GPIO_PIN_6,
+        .port_rst = GPIOC,
+        .pin_num_rst = GPIO_PIN_13,
+    };
+    loader_port_stm32_init(&loader_config);
+    return espOK;
+}
+
+typedef struct {
+    size_t address;
+    const char *filename;
+    size_t size;
+} esp_firmware_part;
+
+#define BOOT_ADDRESS      0x00000ul
+#define USER_ADDRESS      0x01000ul
+#define BLANK1_ADDRESS    0x7e000ul
+#define BLANK2_ADDRESS    0xfb000ul
+#define INIT_DATA_ADDRESS 0xfc000ul
+#define BLANK3_ADDRESS    0xfe000ul
+
+#define BUFFER_LENGTH 512
+
+esp_firmware_part firmware_set[] = {
+    // { .address = BOOT_ADDRESS, .filename = "/boot_v1.7.bin", .size = 0 },
+    { .address = USER_ADDRESS, .filename = "/user1.1024.new.2.bin", .size = 0 },
+    { .address = BLANK1_ADDRESS, .filename = "/blank.bin", .size = 0 },
+    { .address = BLANK2_ADDRESS, .filename = "/blank.bin", .size = 0 },
+    { .address = INIT_DATA_ADDRESS, .filename = "/esp_init_data_default_v08.bin", .size = 0 },
+    { .address = BLANK3_ADDRESS, .filename = "/blank.bin", .size = 0 }
+};
+
+espr_t esp_flash() {
+    espr_t flash_init_res = esp_flash_initialize();
+    if (flash_init_res != espOK) {
+        return flash_init_res;
+    }
+    esp_loader_connect_args_t config = ESP_LOADER_CONNECT_DEFAULT();
+    _dbg("ESP boot connect");
+    if (ESP_LOADER_SUCCESS != esp_loader_connect(&config)) {
+        _dbg("ESP boot connect failed");
+        return espERR;
+    }
+
+    for (esp_firmware_part *current_part = &firmware_set[0]; current_part < &firmware_set[5]; current_part++) {
+        _dbg("ESP Start flash %s", current_part->filename);
+        FIL file_descriptor;
+        if (f_open(&file_descriptor, current_part->filename, FA_READ) != FR_OK) {
+            _dbg("ESP flash: Unable to open file %s", current_part->filename);
+            break;
+        }
+
+        if (esp_loader_flash_start(current_part->address, current_part->size, BUFFER_LENGTH) != ESP_LOADER_SUCCESS) {
+            _dbg("ESP flash: Unable to start flash on address %0xld", current_part->address);
+            f_close(&file_descriptor);
+            break;
+        }
+
+        UINT readBytes = 0;
+        uint8_t buffer[BUFFER_LENGTH];
+        uint32_t readCount = 0;
+
+        while (1) {
+            FRESULT res = f_read(&file_descriptor, buffer, sizeof(buffer), &readBytes);
+            readCount += readBytes;
+            _dbg("ESP read data %ld", readCount);
+            if (res != FR_OK) {
+                _dbg("ESP flash: Unable to read file %s", current_part->filename);
+                readBytes = 0;
+            }
+            if (readBytes > 0) {
+                if (esp_loader_flash_write(buffer, readBytes) != ESP_LOADER_SUCCESS) {
+                    _dbg("ESP flash write FAIL");
+                }
+            } else {
+                _dbg("File finished");
+                f_close(&file_descriptor);
+                break;
+            }
+        }
+    }
+    return espOK;
 }
 
 static void baudrate_change_evt(espr_t res, void *arg) {

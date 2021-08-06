@@ -47,6 +47,10 @@ extern espr_t esp_reconfigure_uart(const uint32_t baudrate);
 /// @brief Hard reset ESP device using a reset pin
 extern void esp_hard_reset_device();
 
+////////////////////////////////////////////////////////////////////////////
+/// @brief Deinitialize ESP low level
+extern espr_t esp_ll_deinit(esp_ll_t *ll);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
