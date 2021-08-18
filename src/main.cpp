@@ -70,6 +70,7 @@
 #include "timing.h"
 #include "filesystem.h"
 #include "adc.h"
+#include "esp.h"
 
 #define USB_OVERC_Pin       GPIO_PIN_4
 #define USB_OVERC_GPIO_Port GPIOE

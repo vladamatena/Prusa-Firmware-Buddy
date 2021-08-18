@@ -415,7 +415,7 @@ esp_loader_error_t loader_spi_parameters(uint32_t total_size)
             .size = 24,
             .checksum = 0
         },
-        .id = 0,
+        .id = 0x0321,
         .total_size = total_size,
         .block_size = 64 * 1024,
         .sector_size = 4 * 1024,

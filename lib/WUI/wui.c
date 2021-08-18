@@ -22,6 +22,7 @@
 #include "netifapi.h"
 #include "dns.h"
 #include "httpd.h"
+#include "main.h"
 
 typedef enum {
     WUI_IP4_DHCP,

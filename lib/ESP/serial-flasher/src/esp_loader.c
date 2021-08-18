@@ -22,6 +22,8 @@
 #include <string.h>
 #include <assert.h>
 
+#include "dbg.h"
+
 #ifndef MAX
 #define MAX(a, b) ((a) > (b)) ? (a) : (b)
 #endif
@@ -103,6 +105,7 @@ esp_loader_error_t esp_loader_connect(esp_loader_connect_args_t *connect_args)
         }
     } while (err != ESP_LOADER_SUCCESS);
 
+    _dbg("Detecting chip");
     RETURN_ON_ERROR( loader_detect_chip(&s_target, &s_reg) );
 
     if (s_target == ESP8266_CHIP) {
@@ -110,6 +113,7 @@ esp_loader_error_t esp_loader_connect(esp_loader_connect_args_t *connect_args)
     } else {
         RETURN_ON_ERROR( loader_read_spi_config(s_target, &spi_config) );
         loader_port_start_timer(DEFAULT_TIMEOUT);
+        spi_config = 0x0321;
         err = loader_spi_attach_cmd(spi_config);
     }
 
@@ -226,6 +230,8 @@ static esp_loader_error_t detect_flash_size(size_t *flash_size)
     }
 
     *flash_size = 1 << size_id;
+
+    _dbg("Detected flash size: %ld", *flash_size);
 
     return ESP_LOADER_SUCCESS;
 }

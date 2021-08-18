@@ -8,7 +8,7 @@
 #endif //BUDDY_ENABLE_ETHERNET
 
 void window_header_t::update_ETH_icon() {
-#ifdef BUDDY_ENABLE_ETHERNET
+    /*#ifdef BUDDY_ENABLE_ETHERNET
     if (get_eth_status() == ETH_UNLINKED) {
         LAN_Off();
     } else if (get_eth_status() == ETH_NETIF_DOWN) {
@@ -16,9 +16,9 @@ void window_header_t::update_ETH_icon() {
     } else {
         LAN_Activate();
     }
-#else
+#else*/
     LAN_Off();
-#endif // BUDDY_ENABLE_ETHERNET
+    /*#endif // BUDDY_ENABLE_ETHERNET*/
 }
 
 void window_header_t::SetIcon(int16_t id_res) {

@@ -114,7 +114,6 @@ espr_t esp_flash_initialize() {
     if (err != espOK) {
         return err;
     }
-    esp_reconfigure_uart(ESP_CFG_AT_PORT_BAUDRATE);
     esp_set_operating_mode(ESP_FLASHING_MODE);
     loader_stm32_config_t loader_config = {
         .huart = &huart6,
@@ -143,12 +142,12 @@ typedef struct {
 #define BUFFER_LENGTH 512
 
 esp_firmware_part firmware_set[] = {
-    // { .address = BOOT_ADDRESS, .filename = "/boot_v1.7.bin", .size = 0 },
-    { .address = USER_ADDRESS, .filename = "/user1.1024.new.2.bin", .size = 0 },
-    { .address = BLANK1_ADDRESS, .filename = "/blank.bin", .size = 0 },
-    { .address = BLANK2_ADDRESS, .filename = "/blank.bin", .size = 0 },
-    { .address = INIT_DATA_ADDRESS, .filename = "/esp_init_data_default_v08.bin", .size = 0 },
-    { .address = BLANK3_ADDRESS, .filename = "/blank.bin", .size = 0 }
+    { .address = BOOT_ADDRESS, .filename = "/boot_v1.7.bin", .size = 4080 },
+    { .address = USER_ADDRESS, .filename = "/user1.1024.new.2.bin", .size = 413444 },
+    { .address = BLANK1_ADDRESS, .filename = "/blank.bin", .size = 4096 },
+    { .address = BLANK2_ADDRESS, .filename = "/blank.bin", .size = 4096 },
+    { .address = INIT_DATA_ADDRESS, .filename = "/esp_init_data_default_v08.bin", .size = 128 },
+    { .address = BLANK3_ADDRESS, .filename = "/blank.bin", .size = 4096 }
 };
 
 espr_t esp_flash() {
@@ -162,8 +161,9 @@ espr_t esp_flash() {
         _dbg("ESP boot connect failed");
         return espERR;
     }
+    _dbg("ESP connected");
 
-    for (esp_firmware_part *current_part = &firmware_set[0]; current_part < &firmware_set[5]; current_part++) {
+    for (esp_firmware_part *current_part = &firmware_set[0]; current_part < &firmware_set[sizeof(firmware_set) / sizeof(esp_firmware_part)]; current_part++) {
         _dbg("ESP Start flash %s", current_part->filename);
         FIL file_descriptor;
         if (f_open(&file_descriptor, current_part->filename, FA_READ) != FR_OK) {
@@ -181,24 +181,32 @@ espr_t esp_flash() {
         uint8_t buffer[BUFFER_LENGTH];
         uint32_t readCount = 0;
 
-        while (1) {
+        HAL_Delay(500);
+
+        do {
             FRESULT res = f_read(&file_descriptor, buffer, sizeof(buffer), &readBytes);
             readCount += readBytes;
-            _dbg("ESP read data %ld", readCount);
             if (res != FR_OK) {
                 _dbg("ESP flash: Unable to read file %s", current_part->filename);
                 readBytes = 0;
             }
             if (readBytes > 0) {
-                if (esp_loader_flash_write(buffer, readBytes) != ESP_LOADER_SUCCESS) {
-                    _dbg("ESP flash write FAIL");
+                esp_loader_error_t ret = esp_loader_flash_write(buffer, readBytes);
+                if (ret != ESP_LOADER_SUCCESS) {
+                    _dbg("ESP flash write FAIL: %d", ret);
+                } else {
+                    _dbg("ESP flashed data %ld ending at %ld", readBytes, readCount);
                 }
-            } else {
-                _dbg("File finished");
-                f_close(&file_descriptor);
-                break;
             }
-        }
+        } while (readBytes > 0);
+
+        _dbg("File finished");
+        f_close(&file_descriptor);
+    }
+
+    if (esp_loader_flash_finish(0) != ESP_LOADER_SUCCESS) {
+        _dbg("Failed to finish flash !!!");
+        return espERR;
     }
     return espOK;
 }
