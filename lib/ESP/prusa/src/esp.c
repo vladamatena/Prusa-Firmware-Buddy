@@ -181,7 +181,7 @@ espr_t esp_flash() {
         uint8_t buffer[BUFFER_LENGTH];
         uint32_t readCount = 0;
 
-        HAL_Delay(500);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
 
         do {
             FRESULT res = f_read(&file_descriptor, buffer, sizeof(buffer), &readBytes);
@@ -190,12 +190,20 @@ espr_t esp_flash() {
                 _dbg("ESP flash: Unable to read file %s", current_part->filename);
                 readBytes = 0;
             }
+            esp_loader_error_t ret = ESP_LOADER_ERROR_FAIL;
             if (readBytes > 0) {
-                esp_loader_error_t ret = esp_loader_flash_write(buffer, readBytes);
-                if (ret != ESP_LOADER_SUCCESS) {
-                    _dbg("ESP flash write FAIL: %d", ret);
+                for (uint t = 1; t <= 5; ++t) {
+                    ret = esp_loader_flash_write(buffer, readBytes);
+                    if (ret == ESP_LOADER_SUCCESS) {
+                        break;
+                    } else {
+                        _dbg("ESP flash write FAIL: %d, try %d/5", ret, t);
+                    }
+                }
+                if (ret == ESP_LOADER_SUCCESS) {
+                    _dbg("ESP flashed data %ld ending at %ld, flash ending at: %ld", readBytes, readCount, readCount + current_part->address);
                 } else {
-                    _dbg("ESP flashed data %ld ending at %ld", readBytes, readCount);
+                    _dbg("ESP flash write FAIL: %d, even after retries", ret);
                 }
             }
         } while (readBytes > 0);

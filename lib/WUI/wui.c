@@ -153,6 +153,18 @@ extern void netconn_client_thread(void const *arg);
 
 void StartWebServerTask(void const *argument) {
     _dbg("wui starts");
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+
+    TaskHandle_t currentTask = xTaskGetCurrentTaskHandle();
+    UBaseType_t oldPriority = uxTaskPriorityGet(currentTask);
+    vTaskPrioritySet(currentTask, osPriorityRealtime);
+    _dbg("Priority now realtime");
+    esp_flash();
+    vTaskPrioritySet(currentTask, oldPriority);
+    _dbg("Priority now default");
+
+    // return;
+
     networkMbox_id = osMessageCreate(osMessageQ(networkMbox), NULL);
     if (networkMbox_id == NULL) {
         _dbg("networkMbox was not created");
