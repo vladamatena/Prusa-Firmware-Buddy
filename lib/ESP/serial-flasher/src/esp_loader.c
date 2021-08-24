@@ -113,7 +113,6 @@ esp_loader_error_t esp_loader_connect(esp_loader_connect_args_t *connect_args)
     } else {
         RETURN_ON_ERROR( loader_read_spi_config(s_target, &spi_config) );
         loader_port_start_timer(DEFAULT_TIMEOUT);
-        spi_config = 0x0321;
         err = loader_spi_attach_cmd(spi_config);
     }
 
