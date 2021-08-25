@@ -309,17 +309,17 @@ int main(void) {
     osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 1024);
     defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
-    /* definition and creation of displayTask */
-    if (HAS_GUI) {
-        osThreadDef(displayTask, StartDisplayTask, osPriorityNormal, 0,
-#if (PRINTER_TYPE == PRINTER_PRUSA_MINI)
-            2048
-#else
-            1024
-#endif
-        );
-        displayTaskHandle = osThreadCreate(osThread(displayTask), NULL);
-    }
+    //     /* definition and creation of displayTask */
+    //     if (HAS_GUI) {
+    //         osThreadDef(displayTask, StartDisplayTask, osPriorityNormal, 0,
+    // #if (PRINTER_TYPE == PRINTER_PRUSA_MINI)
+    //             2048
+    // #else
+    //             1024
+    // #endif
+    //         );
+    //         displayTaskHandle = osThreadCreate(osThread(displayTask), NULL);
+    //     }
 
 #ifdef BUDDY_ENABLE_WUI
     /* definition and creation of webServerTask */

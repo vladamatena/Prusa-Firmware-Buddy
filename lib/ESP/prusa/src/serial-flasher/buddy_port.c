@@ -81,13 +81,41 @@ esp_loader_error_t loader_port_serial_write(const uint8_t *data, uint16_t size, 
 esp_loader_error_t loader_port_serial_read(uint8_t *data, uint16_t size, uint32_t timeout) {
     memset(data, 0x22, size);
 
+    // Mark read time on logic analyzer
+    static uint cnt = 0;
+    if (cnt < 400) {
+        cnt++;
+        if (cnt == 400) {
+            _dbg("#");
+        }
+    } else {
+        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, GPIO_PIN_SET);
+        for (volatile uint i = 0; i < 100; ++i)
+            ;
+        // HAL_Delay(1);
+        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, GPIO_PIN_RESET);
+        for (volatile uint i = 0; i < 100; ++i)
+            ;
+        // HAL_Delay(1);
+        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, GPIO_PIN_SET);
+    }
+
     HAL_StatusTypeDef err = HAL_UART_Receive(uart, data, size, timeout);
+    if (err == HAL_TIMEOUT) {
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+        err = HAL_UART_Receive(uart, data, size, timeout);
+    }
 
     serial_debug_print(data, size, false);
 
     if (err == HAL_OK) {
         return ESP_LOADER_SUCCESS;
     } else if (err == HAL_TIMEOUT) {
+        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, GPIO_PIN_SET);
+        HAL_Delay(1);
+        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, GPIO_PIN_RESET);
+        HAL_Delay(1);
+        HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, GPIO_PIN_SET);
         return ESP_LOADER_ERROR_TIMEOUT;
     } else {
         return ESP_LOADER_ERROR_FAIL;
