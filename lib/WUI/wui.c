@@ -29,6 +29,9 @@
 #include "eeprom.h"
 #include "variant8.h"
 
+#include "lwip/netif.h"
+#include "lwip/tcpip.h"
+
 #define LOOP_EVT_TIMEOUT           500UL
 #define IS_TIME_TO_CHECK_ESP(time) (((time) % 1000) == 0)
 
@@ -71,6 +74,27 @@ void StartWebServerTask(void const *argument) {
         _dbg("networkMbox was not created");
         return;
     }
+
+    struct netif *wlif = malloc(sizeof(struct netif));
+    memset(wlif, 0, sizeof(struct netif));
+
+    //esp_lwip_init(wlif);
+    //_dbg("ESP LWIP INIT DONE");
+
+    static ip4_addr_t ipaddr;
+    static ip4_addr_t netmask;
+    static ip4_addr_t gw;
+
+    ipaddr.addr = 0;
+    netmask.addr = 0;
+    gw.addr = 0;
+
+    _dbg("WLIF add");
+
+    extern uint8_t esp_lwip_init(struct netif * netif);
+
+    struct netif *ret = netif_add(wlif, &ipaddr, &netmask, &gw, NULL,
+        &esp_lwip_init, &tcpip_input);
 
     netdev_init();
 
@@ -136,4 +160,73 @@ struct altcp_pcb *prusa_alloc(void *arg, uint8_t ip_type) {
     } else {
         return NULL;
     }
+
+    /*
+    struct netif *wlif = malloc(sizeof(struct netif));
+    memset(wlif, 0, sizeof(struct netif));
+
+    //esp_lwip_init(wlif);
+    //_dbg("ESP LWIP INIT DONE");
+
+    static ip4_addr_t ipaddr;
+    static ip4_addr_t netmask;
+    static ip4_addr_t gw;
+
+    ipaddr.addr = 0;
+    netmask.addr = 0;
+    gw.addr = 0;
+
+    _dbg("WLIF add");
+    struct netif *ret = netif_add(wlif, &ipaddr, &netmask, &gw, NULL, &esp_lwip_init, &tcpip_input);
+
+    if(ret) {
+        _dbg("WLIF ADDED");
+    } else {
+        _dbg("WLIF FAILED TO ADD");
+        return;
+    }
+
+    // Registers the default network interface
+    netif_set_default(wlif);
+    _dbg("WLIF now default");
+
+    netif_set_up(wlif);
+    _dbg("WLIF now up");
+
+    dhcp_start(wlif);
+    _dbg("WLIF running DHCP");
+
+
+    osDelay(5000);
+
+
+    // Test throughtput with TCP connection
+    _dbg("Create TCP socket");
+    int sockfd = lwip_socket(AF_INET, SOCK_STREAM, 0);
+    _dbg("Sock FD: %d", sockfd);
+    struct sockaddr_in servaddr;
+    memset(&servaddr, 0, sizeof(struct sockaddr_in));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr("10.42.0.1");
+    servaddr.sin_port = htons(5005);
+
+    if (lwip_connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) != 0) {
+        _dbg("TCP connection failed...");
+    }
+
+
+    _dbg("Sending 1MB to the TCP connection");
+    #define PACKET_SIZE (256)
+    char *buff[PACKET_SIZE];
+    for(uint i = 0; i < 4096; i++) {
+        _dbg("Sending packet %d", i);
+        lwip_write(sockfd, buff, PACKET_SIZE);
+    }
+    lwip_close(sockfd);
+
+    for(uint i = 0;; i++) {
+        osDelay(1000);
+    }
+
+*/
 }

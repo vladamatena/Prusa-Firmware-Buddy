@@ -2,6 +2,7 @@
 
 #include "esp/esp.h"
 #include "main.h"
+#include "lwip/netif.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -60,6 +61,8 @@ extern espr_t esp_ll_deinit(esp_ll_t *ll);
 ////////////////////////////////////////////////////////////////////////////
 /// @brief Initialize ESP for flash write
 extern espr_t esp_flash_initialize();
+
+extern uint8_t esp_lwip_init(struct netif *netif);
 
 // UART buffer stuff
 #define RX_BUFFER_LEN 0x1000
