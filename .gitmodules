@@ -1,0 +1,4 @@
+[submodule "lib/ESP/lwesp"]
+	path = lib/ESP/lwesp
+	url = https://github.com/vladamatena/lwesp.git
+	branch = manual_receive_backport
