@@ -284,7 +284,7 @@ static const eeprom_vars_t eeprom_var_defaults = {
     E0_CURRENT,             // AXIS_RMS_CURRENT_MA_E0
     DEFAULT_Z_MAX_POS,      // AXIS_Z_MAX_POS_MM
     0,               // EEVAR_ODOMETER_TIME
-    0,               // EEVAR_ACTIVE_NETDEV
+    1,               // EEVAR_ACTIVE_NETDEV
     1,               // EEVAR_PL_RUN
     "",               // EEVAR_PL_API_KEY
     "",                     // EEVAR__PADDING
