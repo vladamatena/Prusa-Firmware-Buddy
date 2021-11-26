@@ -112,10 +112,10 @@
 // communication + some non data commands might be in progress.
 #define ESP_CFG_CONN_MAX_DATA_LEN 512
 
-#define ESP_CFG_DBG          ESP_DBG_OFF
+#define ESP_CFG_DBG          ESP_DBG_ON
 #define ESP_CFG_DBG_MEM      ESP_DBG_ON
-#define ESP_CFG_DBG_THREAD   ESP_DBG_ON
-#define ESP_CFG_DBG_IPD      ESP_DBG_ON
+#define ESP_CFG_DBG_THREAD   ESP_DBG_OFF
+#define ESP_CFG_DBG_IPD      ESP_DBG_OFF
 #define ESP_CFG_DBG_SERVER   0
 #define ESP_CFG_DBG_TYPES_ON (ESP_DBG_TYPE_STATE | ESP_DBG_TYPE_TRACE)
 

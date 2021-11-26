@@ -49,7 +49,7 @@
 // It would be better to obtain this from ESP but there seems to be no way
 #define ESP_TCP_MSS 536
 
-// #define ALTCP_ESP_DEBUG      1
+#define ALTCP_ESP_DEBUG      1
 #define ALTCP_ESP_EPCB_MAGIC 0xdeadf00d
 
 #if ESP_ALTCP /* don't build if not configured for use in lwipopts.h */
