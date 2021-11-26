@@ -155,6 +155,10 @@ esp_thread_produce(void* const arg) {
 #if ESP_CFG_USE_API_FUNC_EVT
         /* Send event function to user */
         if (msg->evt_fn != NULL) {
+            if(msg->evt_fn == (void*)0xffffffff) {
+                volatile int aaa = 0;
+                MARKXXX: aaa = 42;
+            }
             msg->evt_fn(msg->res, msg->evt_arg);/* Send event with user argument */
         }
 #endif /* ESP_CFG_USE_API_FUNC_EVT */
