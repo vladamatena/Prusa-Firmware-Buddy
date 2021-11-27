@@ -162,7 +162,21 @@ static void ALTCP_TCP_ASSERT_CONN_PCB(struct altcp_pcb *alconn, esp_pcb *epcb) {
 
     if (epcb->alconn != alconn) {
         ALTCP_ESP_DEBUG_FN("Failed: ESP PCB - ALTCP connection mismatch epcb->alconn: %x != conn: %x !!!", epcb->alconn, alconn);
+<<<<<<< HEAD
+=======
     }
+}
+
+static esp_pcb *get_epcb(esp_conn_p conn) {
+    esp_pcb *epcb = esp_conn_get_arg(conn);
+    #ifdef ALTCP_ESP_DEBUG
+    if (!epcb) {
+        ALTCP_ESP_DEBUG_FN("Failed: EPCB for ECONN: %x is NULL", conn);
+>>>>>>> 3642d809 (Assert ESP PCB integrity)
+    }
+    ASSERT_EPCB(epcb);
+    #endif
+    return epcb;
 }
 
 static esp_pcb *get_epcb(esp_conn_p conn) {
